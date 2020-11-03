@@ -69,6 +69,10 @@ data class Position(val x: Int, val y: Int) {
     operator fun minus(other: Position): Delta {
         return Delta(this.x - other.x, this.y - other.y)
     }
+
+    operator fun plus(other: Delta): Position {
+        return Position(this.x + other.x, this.y + other.y)
+    }
 }
 
 private val INITIAL_BOARD = listOf(
@@ -82,6 +86,14 @@ private val INITIAL_BOARD = listOf(
     listOf("WR0", "WN1", "WB2", "WQ3", "WK4", "WB5", "WN6", "WR7").map { Piece.pieceFromString(it) }
 )
 data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
+    companion object {
+        private val ALL_POSITIONS = (0 until 8).flatMap { y ->
+            (0 until 8).map { x -> Position(x, y) }
+        }
+    }
+
+    val allPositions = ALL_POSITIONS
+
     fun pieceAt(position: Position): Piece? {
         return pieces.getOrNull(position.y)?.getOrNull(position.x)
     }

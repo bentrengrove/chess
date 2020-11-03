@@ -36,21 +36,31 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                 }
                 return when (piece.color) {
                     is PieceColor.White -> {
-                        delta.y == -1
+                        if (from.y == 6) {
+                            listOf(-1, -2).contains(delta.y) &&
+                                    !board.piecesExist(from, to)
+                        } else {
+                            delta.y == -1
+                        }
                     }
                     is PieceColor.Black -> {
-                        delta.y == 1
+                        if (from.y == 1) {
+                            listOf(1, 2).contains(delta.y) &&
+                                    !board.piecesExist(from, to)
+                        } else {
+                            delta.y == 1
+                        }
                     }
                 }
             }
             is PieceType.Rook -> {
-                return (delta.x == 0 || delta.y == 0)
+                return (delta.x == 0 || delta.y == 0) && !board.piecesExist(from, to)
             }
             is PieceType.Bishop -> {
-                return abs(delta.x) == abs(delta.y)
+                return abs(delta.x) == abs(delta.y) && !board.piecesExist(from, to)
             }
             is PieceType.Queen -> {
-                return (delta.x == 0 || delta.y == 0 || abs(delta.x) == abs(delta.y))
+                return (delta.x == 0 || delta.y == 0 || abs(delta.x) == abs(delta.y)) && !board.piecesExist(from, to)
             }
             is PieceType.King -> {
                 return abs(delta.x) <= 1 && abs(delta.y) <= 1
@@ -73,4 +83,25 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
     fun doMove(from: Position, to: Position): Game {
         return Game(board = board.movePiece(from, to), history = history + listOf(Move(from, to)))
     }
+
+    fun movesForPieceAt(position: Position?): List<Position> {
+        if (position == null) return emptyList()
+        return board.allPositions.filter { canMove(position, it) }
+    }
+}
+
+private fun Board.piecesExist(between: Position, and: Position): Boolean {
+    val step = Delta(
+        x = if(between.x > and.x) -1 else if (between.x < and.x) 1 else 0,
+        y = if(between.y > and.y) -1 else if (between.y < and.y) 1 else 0
+    )
+    var position = between
+    position += step
+    while (position != and) {
+        if (pieceAt(position) != null) {
+            return true
+        }
+        position += step
+    }
+    return false
 }

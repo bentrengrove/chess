@@ -42,5 +42,5 @@ fun GameView() {
             selection = null
         }
     }
-    BoardView(board = game.board, selection = selection, moves = emptyList(), didTap = onSelect)
+    BoardView(board = game.board, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
 }

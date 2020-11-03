@@ -29,7 +29,7 @@ fun BoardView(modifier: Modifier = Modifier, board: Board, selection: Position?,
                             )
                     ) {
                         val piece = board.pieceAt(position)
-                        if (selection != null && position == selection) {
+                        if (selection != null && position == selection || moves.contains(position)) {
                             Box(Modifier.clip(CircleShape).background(Color.Green).matchParentSize())
                         }
                         if (piece != null) {
