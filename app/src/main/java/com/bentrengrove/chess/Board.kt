@@ -85,4 +85,18 @@ data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
     fun pieceAt(position: Position): Piece? {
         return pieces.getOrNull(position.y)?.getOrNull(position.x)
     }
+
+    fun movePiece(from: Position, to: Position): Board {
+        val piece = pieceAt(from)
+        val newToRow = pieces[to.y].toMutableList()
+        newToRow[to.x] = piece
+        val newFromRow = pieces[from.y].toMutableList()
+        newFromRow[from.x] = null
+
+        val newPieces = pieces.toMutableList()
+        newPieces[to.y] = newToRow.toList()
+        newPieces[from.y] = newFromRow.toList()
+
+        return Board(newPieces)
+    }
 }

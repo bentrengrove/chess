@@ -30,12 +30,16 @@ class MainActivity : AppCompatActivity() {
 
 @Composable
 fun GameView() {
-    val game by remember { mutableStateOf(Game())}
+    var game by remember { mutableStateOf(Game())}
     var selection: Position? by remember { mutableStateOf(null) }
 
     val onSelect: (Position) -> Unit = {
+        val sel = selection
         if (game.canSelect(it)) {
             selection = it
+        } else if (sel != null && game.canMove(sel, it)) {
+            game = game.doMove(sel, it)
+            selection = null
         }
     }
     BoardView(board = game.board, selection = selection, moves = emptyList(), didTap = onSelect)
