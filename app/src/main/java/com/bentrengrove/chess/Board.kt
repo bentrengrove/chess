@@ -94,6 +94,9 @@ data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
 
     val allPositions = ALL_POSITIONS
 
+
+    val allPieces: List<Pair<Position, Piece>> = allPositions.mapNotNull { position -> pieces[position.y][position.x]?.let { position to it } }
+
     fun pieceAt(position: Position): Piece? {
         return pieces.getOrNull(position.y)?.getOrNull(position.x)
     }
@@ -110,5 +113,9 @@ data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
         newPieces[from.y] = newFromRow.toList()
 
         return Board(newPieces)
+    }
+
+    fun firstPosition(where: (Piece) -> Boolean): Position? {
+        return allPieces.firstOrNull { where(it.second) }?.first
     }
 }

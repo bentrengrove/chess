@@ -9,10 +9,42 @@ enum class GameState {
 }
 
 data class Game(val board: Board = Board(), val history: List<Move> = listOf()) {
-    val gameState: GameState = GameState.IDLE
+    val gameState: GameState
+        get() {
+            val color = turn
+            val canMove = allMovesFor(color).find {
+                val newBoard = doMove(it.from, it.to)
+                !newBoard.kingIsInCheck(color)
+            } != null
+            if (kingIsInCheck(color)) {
+                return if (canMove) GameState.CHECK else GameState.CHECKMATE
+            }
+            return if (canMove) GameState.IDLE else GameState.STALEMATE
+        }
 
     val turn: PieceColor
         get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: PieceColor.White
+
+    fun allMovesFor(position: Position): List<Move> {
+         return board.allPositions
+             .map { Move(position, it) }
+             .filter { canMove(it.from, it.to) }
+    }
+
+    fun allMovesFor(color: PieceColor): List<Move> {
+        return board.allPieces.mapNotNull { (position, piece) ->
+            if (piece.color == color) position else null
+        }.flatMap { allMovesFor(it) }
+    }
+
+    fun pieceIsThreatenedAt(position: Position): Boolean {
+        return board.allPositions.find { canMove(from = it, to = position) } != null
+    }
+
+    fun kingIsInCheck(color: PieceColor): Boolean {
+        val kingPosition = board.firstPosition { it.type is PieceType.King && it.color == color } ?: return false
+        return pieceIsThreatenedAt(kingPosition)
+    }
 
     fun canSelect(position: Position): Boolean {
         return board.pieceAt(position)?.color == turn
@@ -27,6 +59,10 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             if (other.color == piece.color) {
                 return false
             }
+        }
+
+        if (doMove(from, to).kingIsInCheck(turn)) {
+            return false
         }
 
         when (piece.type) {
