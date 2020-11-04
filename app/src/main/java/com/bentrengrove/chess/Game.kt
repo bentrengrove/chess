@@ -64,10 +64,6 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             }
         }
 
-        if (doMove(from, to).kingIsInCheck(turn)) {
-            return false
-        }
-
         when (piece.type) {
             is PieceType.Pawn -> {
                 if (delta.x != 0) {
@@ -120,7 +116,10 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
     }
 
     fun doMove(from: Position, to: Position): Game {
-        return Game(board = board.movePiece(from, to), history = history + listOf(Move(from, to)))
+        val oldGame = this.copy()
+        val newGame = Game(board = board.movePiece(from, to), history = history + listOf(Move(from, to)))
+        val wasInCheck = newGame.kingIsInCheck(oldGame.turn)
+        return if (wasInCheck) oldGame else newGame
     }
 
     fun movesForPieceAt(position: Position?): List<Position> {
