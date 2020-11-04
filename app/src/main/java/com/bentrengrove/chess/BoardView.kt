@@ -1,5 +1,9 @@
 package com.bentrengrove.chess
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +17,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun BoardView(modifier: Modifier = Modifier, board: Board, selection: Position?, moves: List<Position>, didTap: (Position)->Unit) {
     Column {
@@ -29,11 +34,13 @@ fun BoardView(modifier: Modifier = Modifier, board: Board, selection: Position?,
                             )
                     ) {
                         val piece = board.pieceAt(position)
-                        if (selection != null && position == selection || moves.contains(position)) {
-                            Box(Modifier.clip(CircleShape).background(Color.Green).matchParentSize())
-                        }
+                        val selected = selection != null && position == selection || moves.contains(position)
                         if (piece != null) {
                             Image(imageResource(id = piece.imageResource()), modifier = Modifier.padding(4.dp).matchParentSize())
+                        }
+                        androidx.compose.animation.AnimatedVisibility(visible = selected, modifier = Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
+                            val color = if (piece != null) Color.Red else Color.Green
+                            Box(Modifier.clip(CircleShape).background(color).size(8.dp))
                         }
                     }
                 }

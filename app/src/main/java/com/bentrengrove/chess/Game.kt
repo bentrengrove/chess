@@ -140,6 +140,10 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             withDelta.y == 1
         }
     }
+
+    fun valueFor(color: PieceColor): Int {
+        return board.allPieces.filter { it.second.color == color }.map { it.second.type.value }.sum()
+    }
 }
 
 private fun Board.piecesExist(between: Position, and: Position): Boolean {
