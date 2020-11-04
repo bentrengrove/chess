@@ -2,6 +2,7 @@ package com.bentrengrove.chess
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,8 @@ import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.unit.dp
 import androidx.ui.tooling.preview.Preview
 import com.bentrengrove.chess.ui.ChessTheme
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
@@ -48,10 +51,12 @@ fun GameView() {
         } else if (sel != null && game.canMove(sel, it)) {
             game = game.doMove(sel, it)
             selection = null
-            if (aiEnabled) {
-                val nextMove = ai.calculateNextMove(game)
-                if (nextMove != null) {
-                    game = game.doMove(nextMove.from, nextMove.to)
+            if (aiEnabled && game.turn == PieceColor.Black) {
+                GlobalScope.launch {
+                    val nextMove = ai.calculateNextMove(game, PieceColor.Black)
+                    if (nextMove != null) {
+                        game = game.doMove(nextMove.from, nextMove.to)
+                    }
                 }
             }
         }
