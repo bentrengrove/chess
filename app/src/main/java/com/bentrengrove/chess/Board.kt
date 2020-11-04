@@ -103,16 +103,12 @@ data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
 
     fun movePiece(from: Position, to: Position): Board {
         val piece = pieceAt(from)
-        val newToRow = pieces[to.y].toMutableList()
-        newToRow[to.x] = piece
-        val newFromRow = pieces[from.y].toMutableList()
-        newFromRow[from.x] = null
+        val newPieces = pieces.map { it.toMutableList() }.toMutableList()
 
-        val newPieces = pieces.toMutableList()
-        newPieces[to.y] = newToRow.toList()
-        newPieces[from.y] = newFromRow.toList()
+        newPieces[to.y][to.x] = piece
+        newPieces[from.y][from.x] = null
 
-        return Board(newPieces)
+        return Board(newPieces.map { it.toList() }.toList())
     }
 
     fun firstPosition(where: (Piece) -> Boolean): Position? {
