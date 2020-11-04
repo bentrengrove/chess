@@ -25,14 +25,14 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
     val turn: PieceColor
         get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: PieceColor.White
 
-    fun allMovesFor(position: Position): List<Move> {
-         return board.allPositions
+    fun allMovesFor(position: Position): Sequence<Move> {
+         return board.allPositions.asSequence()
              .map { Move(position, it) }
              .filter { canMove(it.from, it.to) }
     }
 
-    fun allMovesFor(color: PieceColor): List<Move> {
-        return board.allPieces.mapNotNull { (position, piece) ->
+    fun allMovesFor(color: PieceColor): Sequence<Move> {
+        return board.allPieces.asSequence().mapNotNull { (position, piece) ->
             if (piece.color == color) position else null
         }.flatMap { allMovesFor(it) }
     }
@@ -58,6 +58,9 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         if (other != null) {
             if (other.color == piece.color) {
                 return false
+            }
+            if (piece.type is PieceType.Pawn) {
+                return pawnCanTake(from, delta)
             }
         }
 
@@ -123,6 +126,19 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
     fun movesForPieceAt(position: Position?): List<Position> {
         if (position == null) return emptyList()
         return board.allPositions.filter { canMove(position, it) }
+    }
+
+    fun pawnCanTake(from: Position, withDelta: Delta): Boolean {
+        val pawn = board.pieceAt(from) ?: return false
+        if (abs(withDelta.x) != 1 || pawn.type != PieceType.Pawn) {
+            return false
+        }
+
+        return if (pawn.color is PieceColor.White) {
+            withDelta.y == -1
+        } else {
+            withDelta.y == 1
+        }
     }
 }
 
