@@ -4,16 +4,14 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Text
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material.Switch
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.setContent
@@ -38,6 +36,8 @@ class MainActivity : AppCompatActivity() {
 
 @Composable
 fun GameView() {
+    val ai by remember { mutableStateOf(AI(PieceColor.Black)) }
+    var aiEnabled by remember { mutableStateOf(false) }
     var game by remember { mutableStateOf(Game())}
     var selection: Position? by remember { mutableStateOf(null) }
 
@@ -48,6 +48,12 @@ fun GameView() {
         } else if (sel != null && game.canMove(sel, it)) {
             game = game.doMove(sel, it)
             selection = null
+            if (aiEnabled) {
+                val nextMove = ai.calculateNextMove(game)
+                if (nextMove != null) {
+                    game = game.doMove(nextMove.from, nextMove.to)
+                }
+            }
         }
     }
 
@@ -62,6 +68,10 @@ fun GameView() {
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "State: ${game.gameState}. White: $whitePercentage% Black: $blackPercentage%", style = MaterialTheme.typography.body1)
         Spacer(modifier = Modifier.height(16.dp))
+        Row {
+            Text("Black is AI")
+            Switch(checked = aiEnabled, onCheckedChange = { aiEnabled = it })
+        }
         Button(onClick = {
             game = Game()
             selection = null
