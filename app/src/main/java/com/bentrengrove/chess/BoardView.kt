@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
 
@@ -60,19 +62,28 @@ private fun PieceView(piece: Piece, modifier: Modifier = Modifier) {
 private fun BoardLayout(
         modifier: Modifier = Modifier,
         pieces: List<Pair<Position, Piece>>) {
-    ConstraintLayout(modifier) {
+    val constraints = constraintsFor(pieces)
+    ConstraintLayout(constraints, modifier) {
+        pieces.forEach { (position, piece) ->
+            PieceView(piece = piece, modifier = Modifier.layoutId(piece.id))
+        }
+    }
+}
+
+private fun constraintsFor(pieces: List<Pair<Position, Piece>>): ConstraintSet {
+    return ConstraintSet {
         val horizontalGuidelines = (0..8).map { createGuidelineFromAbsoluteLeft(it.toFloat() / 8f) }
         val verticalGuidelines = (0..8).map { createGuidelineFromTop(it.toFloat() / 8f) }
         pieces.forEach { (position, piece) ->
-            val pieceRef = createRef()
-            PieceView(piece = piece, modifier = Modifier.constrainAs(pieceRef) {
+            val pieceRef = createRefFor(piece.id)
+            constrain(pieceRef) {
                 top.linkTo(verticalGuidelines[position.y])
                 bottom.linkTo(verticalGuidelines[position.y + 1])
                 start.linkTo(horizontalGuidelines[position.x])
                 end.linkTo((horizontalGuidelines[position.x + 1]))
                 width = Dimension.fillToConstraints
                 height = Dimension.fillToConstraints
-            })
+            }
         }
     }
 }
