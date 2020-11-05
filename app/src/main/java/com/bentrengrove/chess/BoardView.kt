@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Layout
 import androidx.compose.ui.Modifier
@@ -20,36 +21,55 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
 
+
+@Composable
+fun GameView(modifier: Modifier = Modifier, board: Board, selection: Position?, moves: List<Position>, didTap: (Position)->Unit) {
+    Box(modifier) {
+        BoardBackground(didTap)
+        BoardLayout(pieces = board.allPieces, modifier = Modifier.fillMaxWidth().aspectRatio(1.0f))
+        MovesView(board, selection, moves)
+    }
+}
+
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun BoardView(modifier: Modifier = Modifier, board: Board, selection: Position?, moves: List<Position>, didTap: (Position)->Unit) {
-    Box(modifier) {
-        Column {
-            for (y in 0 until 8) {
-                Row {
-                    for (x in 0 until 8) {
-                        val position = Position(x, y)
-                        val white = y % 2 == x % 2
-                        val color = if (white) Color.LightGray else Color.DarkGray
-                        Box(
-                                modifier = Modifier.weight(1f).background(color).aspectRatio(1.0f)
-                                        .clickable(
-                                                onClick = { didTap(position) }
-                                        )
-                        ) {
-                            val piece = board.pieceAt(position)
-                            val selected = selection != null && position == selection || moves.contains(position)
-                            androidx.compose.animation.AnimatedVisibility(visible = selected, modifier = Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
-                                val color = if (piece != null) Color.Red else Color.Green
-                                Box(Modifier.clip(CircleShape).background(color).size(8.dp))
-                            }
+private fun MovesView(board: Board, selection: Position?, moves: List<Position>) {
+    Column {
+        for (y in 0 until 8) {
+            Row {
+                for (x in 0 until 8) {
+                    val position = Position(x, y)
+                    Box(modifier = Modifier.weight(1f).aspectRatio(1.0f)) {
+                        val piece = board.pieceAt(position)
+                        val selected = selection != null && position == selection || moves.contains(position)
+                        androidx.compose.animation.AnimatedVisibility(visible = selected, modifier = Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
+                            val color = if (piece != null) Color.Red else Color.Green
+                            Box(Modifier.clip(CircleShape).background(color).size(8.dp))
                         }
                     }
                 }
             }
         }
+    }
+}
 
-        BoardLayout(pieces = board.allPieces, modifier = Modifier.fillMaxWidth().aspectRatio(1.0f))
+@Composable
+fun BoardBackground(didTap: (Position)->Unit) {
+    Column {
+        for (y in 0 until 8) {
+            Row {
+                for (x in 0 until 8) {
+                    val position = Position(x, y)
+                    val white = y % 2 == x % 2
+                    val color = if (white) Color.LightGray else Color.DarkGray
+                    Box(modifier = Modifier.weight(1f).background(color).aspectRatio(1.0f)
+                            .clickable(
+                                    onClick = { didTap(position) }
+                            )
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -64,7 +84,7 @@ private fun BoardLayout(
         pieces: List<Pair<Position, Piece>>) {
     val constraints = constraintsFor(pieces)
     ConstraintLayout(constraints, modifier) {
-        pieces.forEach { (position, piece) ->
+        pieces.forEach { (_, piece) ->
             PieceView(piece = piece, modifier = Modifier.layoutId(piece.id))
         }
     }

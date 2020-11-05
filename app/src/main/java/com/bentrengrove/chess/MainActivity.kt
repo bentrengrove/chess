@@ -2,7 +2,6 @@ package com.bentrengrove.chess
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.unit.dp
-import androidx.ui.tooling.preview.Preview
 import com.bentrengrove.chess.ui.ChessTheme
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -69,7 +67,7 @@ fun GameView() {
     val whitePercentage = ((whiteValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
     val blackPercentage = ((blackValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
     Column {
-        BoardView(board = game.board, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
+        GameView(board = game.board, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "State: ${game.gameState}. White: $whitePercentage% Black: $blackPercentage%", style = MaterialTheme.typography.body1)
         Spacer(modifier = Modifier.height(16.dp))
