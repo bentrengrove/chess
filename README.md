@@ -11,5 +11,5 @@ Work In Progress
 
 ## TODO
 - Animating pieces
-- Promotion to more than just a Queen, en passant
+- Promotion to more than just a Queen
 - Better AI (the current one is really terrible, effectively random)

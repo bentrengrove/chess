@@ -120,4 +120,12 @@ data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
 
         return Board(newPieces.map { it.toList() }.toList())
     }
+
+    fun removePiece(at: Position): Board {
+        val oldPiece = pieceAt(at) ?: return this
+        val newPieces = pieces.map { it.toMutableList() }.toMutableList()
+        newPieces[at.y][at.x] = null
+
+        return Board(newPieces.map { it.toList() }.toList())
+    }
 }

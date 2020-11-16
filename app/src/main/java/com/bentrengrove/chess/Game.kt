@@ -66,6 +66,9 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
         when (piece.type) {
             is PieceType.Pawn -> {
+                if (enPassantTakePermitted(from, to)) {
+                    return true
+                }
                 if (delta.x != 0) {
                     return false
                 }
@@ -140,6 +143,8 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             val rookPosition = Position(if (kingSide) 7 else 0, to.y)
             val rookDestination = Position(if (kingSide) 5 else 3, to.y)
             board.movePiece(rookPosition, rookDestination)
+        } else if (board.pieceAt(from)?.type == PieceType.Pawn && enPassantTakePermitted(from, to)) {
+            board.removePiece(Position(to.x, to.y - (to.y - from.y)))
         } else {
             board
         }
@@ -201,6 +206,26 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
         return ((if (isKingSide) 5..6 else 1..3).map { board.pieceAt(Position(it, kingsRow)) }.find { it != null } == null) &&
                 ((if (isKingSide) 4..6 else 2..4).map { positionIsThreatened(Position(it, kingsRow ), by = this.turn.other()) }.find { it == true } == null)
+    }
+
+    fun enPassantTakePermitted(from: Position, to: Position): Boolean {
+        board.pieceAt(from) ?: return false
+        if (!pawnCanTake(from, to - from)) return false
+
+        val lastMove = history.lastOrNull() ?: return false
+        if (lastMove.to.x != to.x) return false
+
+        val lastPiece = board.pieceAt(lastMove.to) ?: return false
+        if (lastPiece.type != PieceType.Pawn || lastPiece.color == turn) return false
+
+        return when (lastPiece.color) {
+            is PieceColor.White -> {
+               lastMove.from.y == to.y + 1 && lastMove.to.y == to.y - 1
+            }
+            is PieceColor.Black -> {
+                lastMove.from.y == to.y - 1 && lastMove.to.y == to.y + 1
+            }
+        }
     }
 
     fun valueFor(color: PieceColor): Int {
