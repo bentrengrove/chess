@@ -98,7 +98,8 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                 return (delta.x == 0 || delta.y == 0 || abs(delta.x) == abs(delta.y)) && !board.piecesExist(from, to)
             }
             is PieceType.King -> {
-                return abs(delta.x) <= 1 && abs(delta.y) <= 1
+                if (abs(delta.x) <= 1 && abs(delta.y) <= 1) return true
+                return castlingPermitted(from, to)
             }
             is PieceType.Knight -> {
                 return listOf(
@@ -117,13 +118,13 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
     fun doMove(from: Position, to: Position): Game {
         val oldGame = this.copy()
-        val newGame = Game(board = board.movePiece(from, to), history = history + listOf(Move(from, to)))
+        val newGame = move(from, to)
         val wasInCheck = newGame.kingIsInCheck(oldGame.turn)
 
         if (wasInCheck) {
             return oldGame
         }
-        
+
         val wasPromoted = newGame.canPromotePieceAt(to)
 
         if (wasPromoted) {
@@ -131,6 +132,18 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         }
 
         return newGame
+    }
+
+    private fun move(from: Position, to: Position): Game {
+        val intermediateBoard = if (board.pieceAt(from)?.type == PieceType.King && abs(to.x - from.x) > 1) {
+            val kingSide = (to.x == 6)
+            val rookPosition = Position(if (kingSide) 7 else 0, to.y)
+            val rookDestination = Position(if (kingSide) 5 else 3, to.y)
+            board.movePiece(rookPosition, rookDestination)
+        } else {
+            board
+        }
+        return Game(board = intermediateBoard.movePiece(from, to), history = history + listOf(Move(from, to)))
     }
 
     fun movesForPieceAt(position: Position?): List<Position> {
@@ -159,6 +172,35 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
     fun promotePieceAt(position: Position, to: PieceType): Game {
         return Game(board.promotePiece(position, to), this.history)
+    }
+
+    fun pieceHasMoved(at: Position): Boolean {
+        return history.find { it.from == at } != null
+    }
+
+    fun positionIsThreatened(position: Position, by: PieceColor): Boolean {
+        return board.allPieces.find { (from, piece) ->
+            if (piece.color != by) return@find false
+            if (piece.type == PieceType.Pawn) return@find pawnCanTake(from, position - from)
+            return canMove(from, position)
+        } != null
+    }
+
+    fun castlingPermitted(from: Position, to: Position): Boolean {
+        val piece = board.pieceAt(from) ?: return false
+        if (piece.type != PieceType.King) return false
+        val kingsRow = if (piece.color == PieceColor.Black) 0 else 7
+        if (!(from.y == kingsRow && to.y == kingsRow && from.x == 4 && listOf(2, 6).contains(to.x))) return false
+
+        val kingPosition = Position(4, kingsRow)
+        if (pieceHasMoved(kingPosition)) return false
+
+        val isKingSide = to.x == 6
+        val rookPosition = Position(if (isKingSide) 7 else 0, kingsRow)
+        if (pieceHasMoved(rookPosition)) return false
+
+        return ((if (isKingSide) 5..6 else 1..3).map { board.pieceAt(Position(it, kingsRow)) }.find { it != null } == null) &&
+                ((if (isKingSide) 4..6 else 2..4).map { positionIsThreatened(Position(it, kingsRow ), by = this.turn.other()) }.find { it == true } == null)
     }
 
     fun valueFor(color: PieceColor): Int {
