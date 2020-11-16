@@ -119,7 +119,18 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         val oldGame = this.copy()
         val newGame = Game(board = board.movePiece(from, to), history = history + listOf(Move(from, to)))
         val wasInCheck = newGame.kingIsInCheck(oldGame.turn)
-        return if (wasInCheck) oldGame else newGame
+
+        if (wasInCheck) {
+            return oldGame
+        }
+        
+        val wasPromoted = newGame.canPromotePieceAt(to)
+
+        if (wasPromoted) {
+            return newGame.promotePieceAt(to, PieceType.Queen) // TODO: Promote to other types
+        }
+
+        return newGame
     }
 
     fun movesForPieceAt(position: Position?): List<Position> {
@@ -138,6 +149,16 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         } else {
             withDelta.y == 1
         }
+    }
+
+    fun canPromotePieceAt(position: Position): Boolean {
+        val pawn = board.pieceAt(position)
+        if (pawn?.type !is PieceType.Pawn) return false
+        return (pawn.color == PieceColor.White && position.y == 0) || (pawn.color == PieceColor.Black && position.y == 7)
+    }
+
+    fun promotePieceAt(position: Position, to: PieceType): Game {
+        return Game(board.promotePiece(position, to), this.history)
     }
 
     fun valueFor(color: PieceColor): Int {

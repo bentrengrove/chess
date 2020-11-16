@@ -49,6 +49,7 @@ fun GameView() {
         } else if (sel != null && game.canMove(sel, it)) {
             game = game.doMove(sel, it)
             selection = null
+
             if (aiEnabled && game.turn == PieceColor.Black) {
                 GlobalScope.launch {
                     val nextMove = ai.calculateNextMove(game, PieceColor.Black)
