@@ -8,13 +8,18 @@ enum class GameState {
     IDLE, CHECK, CHECKMATE, STALEMATE
 }
 
+sealed class MoveResult {
+    data class Success(val game: Game): MoveResult()
+    data class Promotion(val onPieceSelection: (PieceType)->MoveResult): MoveResult()
+}
+
 data class Game(val board: Board = Board(), val history: List<Move> = listOf()) {
     val gameState: GameState
         get() {
             val color = turn
             val canMove = allMovesFor(color).find {
                 val newBoard = doMove(it.from, it.to)
-                !newBoard.kingIsInCheck(color)
+                (newBoard is MoveResult.Success) && !newBoard.game.kingIsInCheck(color)
             } != null
             if (kingIsInCheck(color)) {
                 return if (canMove) GameState.CHECK else GameState.CHECKMATE
@@ -119,22 +124,24 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         }
     }
 
-    fun doMove(from: Position, to: Position): Game {
+    fun doMove(from: Position, to: Position): MoveResult {
         val oldGame = this.copy()
         val newGame = move(from, to)
         val wasInCheck = newGame.kingIsInCheck(oldGame.turn)
 
         if (wasInCheck) {
-            return oldGame
+            return MoveResult.Success(oldGame)
         }
 
         val wasPromoted = newGame.canPromotePieceAt(to)
 
         if (wasPromoted) {
-            return newGame.promotePieceAt(to, PieceType.Queen) // TODO: Promote to other types
+            return MoveResult.Promotion { promoteTo ->
+                MoveResult.Success(newGame.promotePieceAt(to, promoteTo))
+            }
         }
 
-        return newGame
+        return MoveResult.Success(newGame)
     }
 
     private fun move(from: Position, to: Position): Game {

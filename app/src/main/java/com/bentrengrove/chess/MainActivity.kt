@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Switch
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,48 +36,70 @@ class MainActivity : AppCompatActivity() {
 fun GameView() {
     val ai by remember { mutableStateOf(AI(PieceColor.Black)) }
     var aiEnabled by remember { mutableStateOf(false) }
-    var game by remember { mutableStateOf(Game())}
+    var moveResult by remember { mutableStateOf<MoveResult>(MoveResult.Success(Game()))}
     var selection: Position? by remember { mutableStateOf(null) }
 
-    val onSelect: (Position) -> Unit = {
-        val sel = selection
-        if (game.canSelect(it)) {
-            selection = it
-        } else if (sel != null && game.canMove(sel, it)) {
-            game = game.doMove(sel, it)
-            selection = null
+    when (val result = moveResult) {
+        is MoveResult.Promotion -> {
+            val onPieceSelection = result.onPieceSelection
+            val onButtonClicked: (PieceType) -> Unit = {
+                moveResult = onPieceSelection(it)
+            }
+            AlertDialog(onDismissRequest = {}, buttons = {
+                Button({ onButtonClicked(PieceType.Queen) }) { androidx.compose.material.Text(text = "Queen") }
+                Button({ onButtonClicked(PieceType.Rook) }) { androidx.compose.material.Text(text = "Rook") }
+                Button({ onButtonClicked(PieceType.Knight) }) { androidx.compose.material.Text(text = "Knight") }
+                Button({ onButtonClicked(PieceType.Bishop) }) { androidx.compose.material.Text(text = "Bishop") }
+            }, title = { androidx.compose.material.Text(text = "Promote to") })
+        }
+        is MoveResult.Success -> {
+            val game = result.game
 
-            if (aiEnabled && game.turn == PieceColor.Black) {
-                GlobalScope.launch {
-                    val nextMove = ai.calculateNextMove(game, PieceColor.Black)
-                    if (nextMove != null) {
-                        game = game.doMove(nextMove.from, nextMove.to)
+            val onSelect: (Position) -> Unit = {
+                val sel = selection
+                if (game.canSelect(it)) {
+                    selection = it
+                } else if (sel != null && game.canMove(sel, it)) {
+                    moveResult = game.doMove(sel, it)
+                    selection = null
+
+                    if (aiEnabled && game.turn == PieceColor.Black) {
+                        GlobalScope.launch {
+                            val nextMove = ai.calculateNextMove(game, PieceColor.Black)
+                            if (nextMove != null) {
+                                val aiResult = game.doMove(nextMove.from, nextMove.to)
+                                moveResult = when(aiResult) {
+                                    is MoveResult.Success -> aiResult
+                                    is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
 
-    val whiteValue = game.valueFor(PieceColor.White)
-    val blackValue = game.valueFor(PieceColor.Black)
-    val totalValue = whiteValue + blackValue
+            val whiteValue = game.valueFor(PieceColor.White)
+            val blackValue = game.valueFor(PieceColor.Black)
+            val totalValue = whiteValue + blackValue
 
-    val whitePercentage = ((whiteValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
-    val blackPercentage = ((blackValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
-    Column {
-        GameView(board = game.board, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "State: ${game.gameState}. White: $whitePercentage% Black: $blackPercentage%", style = MaterialTheme.typography.body1)
-        Spacer(modifier = Modifier.height(16.dp))
-        Row {
-            Text("Black is AI")
-            Switch(checked = aiEnabled, onCheckedChange = { aiEnabled = it })
-        }
-        Button(onClick = {
-            game = Game()
-            selection = null
-        }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(text = "Reset")
+            val whitePercentage = ((whiteValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
+            val blackPercentage = ((blackValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
+            Column {
+                GameView(board = game.board, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "State: ${game.gameState}. White: $whitePercentage% Black: $blackPercentage%", style = MaterialTheme.typography.body1)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row {
+                    Text("Black is AI")
+                    Switch(checked = aiEnabled, onCheckedChange = { aiEnabled = it })
+                }
+                Button(onClick = {
+                    moveResult = MoveResult.Success(Game())
+                    selection = null
+                }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text(text = "Reset")
+                }
+            }
         }
     }
 }

@@ -9,12 +9,13 @@ class AI(val color: PieceColor) {
     fun search(game: Game, depth: Int, player: PieceColor): List<Pair<Move, Int>> {
         return game.allMovesFor(game.turn)
                 .mapNotNull {
-                    val newGame = game.doMove(it.from, it.to)
+                    val moveResult = (game.doMove(it.from, it.to) as? MoveResult.Success)?.game ?: return@mapNotNull null
+
                     if (depth > 0 && game.turn == player) {
-                        val best = search(newGame, depth - 1, player).firstOrNull()?.second ?: return@mapNotNull null
+                        val best = search(moveResult, depth - 1, player).firstOrNull()?.second ?: return@mapNotNull null
                         it to best
                     } else {
-                        it to (newGame.valueFor(player) - newGame.valueFor(player.other()))
+                        it to (moveResult.valueFor(player) - moveResult.valueFor(player.other()))
                     }
                 }
                 .sortedByDescending { it.second }
