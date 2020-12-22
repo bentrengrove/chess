@@ -2,7 +2,6 @@ package com.bentrengrove.chess
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,12 +44,21 @@ fun GameView() {
             val onButtonClicked: (PieceType) -> Unit = {
                 moveResult = onPieceSelection(it)
             }
-            AlertDialog(onDismissRequest = {}, buttons = {
-                Button({ onButtonClicked(PieceType.Queen) }) { androidx.compose.material.Text(text = "Queen") }
-                Button({ onButtonClicked(PieceType.Rook) }) { androidx.compose.material.Text(text = "Rook") }
-                Button({ onButtonClicked(PieceType.Knight) }) { androidx.compose.material.Text(text = "Knight") }
-                Button({ onButtonClicked(PieceType.Bishop) }) { androidx.compose.material.Text(text = "Bishop") }
-            }, title = { androidx.compose.material.Text(text = "Promote to") })
+            AlertDialog(
+                onDismissRequest = {},
+                buttons = {
+                    Button({ onButtonClicked(PieceType.Queen) }) { Text(text = "Queen") }
+                    Button({ onButtonClicked(PieceType.Rook) }) { Text(text = "Rook") }
+                    Button({ onButtonClicked(PieceType.Knight) }) { Text(text = "Knight") }
+                    Button({ onButtonClicked(PieceType.Bishop) }) { Text(text = "Bishop") }
+                },
+                title = {
+                    Text(text = "Promote to")
+                },
+                text = {
+                    Text(text = "Please choose a piece type to promote the pawn to")
+                }
+            )
         }
         is MoveResult.Success -> {
             val game = result.game
