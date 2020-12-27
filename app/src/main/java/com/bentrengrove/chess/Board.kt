@@ -90,6 +90,15 @@ data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
         private val ALL_POSITIONS = (0 until 8).flatMap { y ->
             (0 until 8).map { x -> Position(x, y) }
         }
+
+        fun fromHistory(history: List<Move>): Board {
+            var board = Board()
+            history.forEach {
+                board = board.movePiece(it.from, it.to)
+            }
+
+            return board
+        }
     }
 
     val allPositions = ALL_POSITIONS

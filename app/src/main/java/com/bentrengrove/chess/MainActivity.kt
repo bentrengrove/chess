@@ -37,6 +37,7 @@ fun GameView() {
     var aiEnabled by remember { mutableStateOf(false) }
     var moveResult by remember { mutableStateOf<MoveResult>(MoveResult.Success(Game()))}
     var selection: Position? by remember { mutableStateOf(null) }
+    var forwardHistory by remember { mutableStateOf<List<Move>>(listOf())}
 
     when (val result = moveResult) {
         is MoveResult.Promotion -> {
@@ -70,6 +71,7 @@ fun GameView() {
                 } else if (sel != null && game.canMove(sel, it)) {
                     moveResult = game.doMove(sel, it)
                     selection = null
+                    forwardHistory = listOf()
 
                     if (aiEnabled && game.turn == PieceColor.Black) {
                         GlobalScope.launch {
@@ -101,11 +103,30 @@ fun GameView() {
                     Text("Black is AI")
                     Switch(checked = aiEnabled, onCheckedChange = { aiEnabled = it })
                 }
-                Button(onClick = {
-                    moveResult = MoveResult.Success(Game())
-                    selection = null
-                }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text(text = "Reset")
+                Row {
+                    Button(onClick = {
+                        val lastMove = game.history.last()
+                        val newHistory = game.history.subList(0, game.history.size-1)
+                        val newBoard = Board.fromHistory(newHistory)
+                        moveResult = MoveResult.Success(Game(newBoard, newHistory))
+                        forwardHistory = forwardHistory + listOf(lastMove)
+                    }, enabled = game.history.isNotEmpty()) {
+                        Text(text = "<")
+                    }
+                    Button(onClick = {
+                        moveResult = MoveResult.Success(Game())
+                        forwardHistory = listOf()
+                        selection = null
+                    }) {
+                        Text(text = "New Game")
+                    }
+                    Button(onClick = {
+                        val move = forwardHistory.last()
+                        forwardHistory = forwardHistory.subList(0, forwardHistory.size-1)
+                        moveResult = game.doMove(move.from, move.to)
+                    }, enabled = forwardHistory.isNotEmpty()) {
+                        Text(text = ">")
+                    }
                 }
             }
         }
