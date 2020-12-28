@@ -2,14 +2,15 @@ package com.bentrengrove.chess
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.animation.core.Animation
+import androidx.compose.animation.core.AnimationVector
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.unit.dp
 import com.bentrengrove.chess.ui.ChessTheme
@@ -78,7 +79,7 @@ fun GameView() {
                             val nextMove = ai.calculateNextMove(game, PieceColor.Black)
                             if (nextMove != null) {
                                 val aiResult = game.doMove(nextMove.from, nextMove.to)
-                                moveResult = when(aiResult) {
+                                moveResult = when (aiResult) {
                                     is MoveResult.Success -> aiResult
                                     is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
                                 }
@@ -88,31 +89,24 @@ fun GameView() {
                 }
             }
 
-            val whiteValue = game.valueFor(PieceColor.White)
-            val blackValue = game.valueFor(PieceColor.Black)
-            val totalValue = whiteValue + blackValue
-
-            val whitePercentage = ((whiteValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
-            val blackPercentage = ((blackValue.toFloat()/totalValue.toFloat()) * 100f).roundToInt()
             Column {
-                GameView(board = game.board, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
+                CapturedView(pieces = game.capturedPiecesFor(PieceColor.White))
+                GameView(game = game, selection = selection, moves = game.movesForPieceAt(selection), didTap = onSelect)
+                CapturedView(pieces = game.capturedPiecesFor(PieceColor.Black))
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "State: ${game.gameState}. White: $whitePercentage% Black: $blackPercentage%", style = MaterialTheme.typography.body1)
+                Text(text = game.displayGameState, style = MaterialTheme.typography.body1, modifier = Modifier.padding(horizontal = 8.dp))
                 Spacer(modifier = Modifier.height(16.dp))
-                Row {
-                    Text("Black is AI")
-                    Switch(checked = aiEnabled, onCheckedChange = { aiEnabled = it })
-                }
-                Row {
+                Row(modifier = Modifier.padding(8.dp).align(Alignment.CenterHorizontally)) {
                     Button(onClick = {
                         val lastMove = game.history.last()
-                        val newHistory = game.history.subList(0, game.history.size-1)
+                        val newHistory = game.history.subList(0, game.history.size - 1)
                         val newBoard = Board.fromHistory(newHistory)
                         moveResult = MoveResult.Success(Game(newBoard, newHistory))
                         forwardHistory = forwardHistory + listOf(lastMove)
                     }, enabled = game.history.isNotEmpty()) {
                         Text(text = "<")
                     }
+                    Spacer(modifier = Modifier.width(4.dp))
                     Button(onClick = {
                         moveResult = MoveResult.Success(Game())
                         forwardHistory = listOf()
@@ -120,9 +114,10 @@ fun GameView() {
                     }) {
                         Text(text = "New Game")
                     }
+                    Spacer(modifier = Modifier.width(4.dp))
                     Button(onClick = {
                         val move = forwardHistory.last()
-                        forwardHistory = forwardHistory.subList(0, forwardHistory.size-1)
+                        forwardHistory = forwardHistory.subList(0, forwardHistory.size - 1)
                         moveResult = game.doMove(move.from, move.to)
                     }, enabled = forwardHistory.isNotEmpty()) {
                         Text(text = ">")

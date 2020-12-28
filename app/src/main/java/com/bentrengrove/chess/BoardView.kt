@@ -15,20 +15,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
+import com.bentrengrove.chess.ui.BoardColors
 
 
 @Composable
-fun GameView(modifier: Modifier = Modifier, board: Board, selection: Position?, moves: List<Position>, didTap: (Position)->Unit) {
+fun GameView(modifier: Modifier = Modifier, game: Game, selection: Position?, moves: List<Position>, didTap: (Position)->Unit) {
     Box(modifier) {
-        BoardBackground(didTap)
+        val board = game.board
+
+        // Highlight king in check, could potentially highlight other things here
+        val dangerPositions = listOf(PieceColor.White, PieceColor.Black).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
+
+        BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap)
         BoardLayout(pieces = board.allPieces, modifier = Modifier.fillMaxWidth().aspectRatio(1.0f))
-        MovesView(board, selection, moves)
+        MovesView(board, moves)
     }
 }
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-private fun MovesView(board: Board, selection: Position?, moves: List<Position>) {
+private fun MovesView(board: Board, moves: List<Position>) {
     Column {
         for (y in 0 until 8) {
             Row {
@@ -36,10 +42,10 @@ private fun MovesView(board: Board, selection: Position?, moves: List<Position>)
                     val position = Position(x, y)
                     Box(modifier = Modifier.weight(1f).aspectRatio(1.0f)) {
                         val piece = board.pieceAt(position)
-                        val selected = selection != null && position == selection || moves.contains(position)
+                        val selected = moves.contains(position)
                         androidx.compose.animation.AnimatedVisibility(visible = selected, modifier = Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
-                            val color = if (piece != null) Color.Red else Color.Green
-                            Box(Modifier.clip(CircleShape).background(color).size(8.dp))
+                            val color = if (piece != null) BoardColors.attackColor else BoardColors.moveColor
+                            Box(Modifier.clip(CircleShape).background(color).size(16.dp))
                         }
                     }
                 }
@@ -49,14 +55,20 @@ private fun MovesView(board: Board, selection: Position?, moves: List<Position>)
 }
 
 @Composable
-fun BoardBackground(didTap: (Position)->Unit) {
+fun BoardBackground(lastMove: Move?, selection: Position?, dangerPositions: List<Position>, didTap: (Position)->Unit) {
     Column {
         for (y in 0 until 8) {
             Row {
                 for (x in 0 until 8) {
                     val position = Position(x, y)
                     val white = y % 2 == x % 2
-                    val color = if (white) Color.LightGray else Color.DarkGray
+                    val color = if (lastMove?.contains(position) == true || position == selection) {
+                        BoardColors.lastMoveColor
+                    } else if (dangerPositions.contains(position)) {
+                        BoardColors.checkColor
+                    } else {
+                        if (white) BoardColors.lightSquare else BoardColors.darkSquare
+                    }
                     Box(modifier = Modifier.weight(1f).background(color).aspectRatio(1.0f)
                             .clickable(
                                     onClick = { didTap(position) }
@@ -69,7 +81,7 @@ fun BoardBackground(didTap: (Position)->Unit) {
 }
 
 @Composable
-private fun PieceView(piece: Piece, modifier: Modifier = Modifier) {
+fun PieceView(piece: Piece, modifier: Modifier = Modifier) {
     Image(imageResource(id = piece.imageResource()), modifier = modifier.padding(4.dp))
 }
 

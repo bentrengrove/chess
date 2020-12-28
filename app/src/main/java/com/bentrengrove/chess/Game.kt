@@ -2,7 +2,11 @@ package com.bentrengrove.chess
 
 import kotlin.math.abs
 
-data class Move(val from: Position, val to: Position)
+data class Move(val from: Position, val to: Position) {
+    fun contains(position: Position): Boolean {
+        return from == position || to == position
+    }
+}
 
 enum class GameState {
     IDLE, CHECK, CHECKMATE, STALEMATE
@@ -27,6 +31,17 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             return if (canMove) GameState.IDLE else GameState.STALEMATE
         }
 
+    val displayGameState: String
+        get() {
+            val turnString = if (turn == PieceColor.White) "White's Turn" else "Black's Turn"
+            return when(gameState) {
+                GameState.IDLE -> turnString
+                GameState.CHECK -> "Check - $turnString"
+                GameState.CHECKMATE -> "Checkmate - " + if (turn == PieceColor.White) "Black Win's" else "White Win's"
+                GameState.STALEMATE -> "Draw - Stalemate"
+            }
+        }
+
     val turn: PieceColor
         get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: PieceColor.White
 
@@ -46,8 +61,12 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         return board.allPositions.find { canMove(from = it, to = position) } != null
     }
 
+    fun kingPosition(color: PieceColor): Position? {
+        return board.firstPosition { it.type is PieceType.King && it.color == color }
+    }
+
     fun kingIsInCheck(color: PieceColor): Boolean {
-        val kingPosition = board.firstPosition { it.type is PieceType.King && it.color == color } ?: return false
+        val kingPosition = kingPosition(color) ?: return false
         return pieceIsThreatenedAt(kingPosition)
     }
 
@@ -237,6 +256,13 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
     fun valueFor(color: PieceColor): Int {
         return board.allPieces.filter { it.second.color == color }.map { it.second.type.value }.sum()
+    }
+
+    fun capturedPiecesFor(color: PieceColor): List<Piece> {
+        val startingPieces = STARTING_PIECES.filter { it.color == color }.map { it.id }.toSet()
+        val currentPieces = board.allPieces.map { it.second }.filter { it.color == color }.map { it.id }.toSet()
+        val capturedPieces = startingPieces - currentPieces
+        return capturedPieces.map { Piece.pieceFromString(it) }
     }
 }
 

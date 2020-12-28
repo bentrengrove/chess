@@ -85,6 +85,8 @@ private val INITIAL_BOARD = listOf(
     listOf("WP0", "WP1", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7").map { Piece.pieceFromString(it) },
     listOf("WR0", "WN1", "WB2", "WQ3", "WK4", "WB5", "WN6", "WR7").map { Piece.pieceFromString(it) }
 )
+val STARTING_PIECES = INITIAL_BOARD.flatten().filterNotNull()
+
 data class Board(val pieces: List<List<Piece?>> = INITIAL_BOARD) {
     companion object {
         private val ALL_POSITIONS = (0 until 8).flatMap { y ->
