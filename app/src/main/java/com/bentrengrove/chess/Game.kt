@@ -37,7 +37,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             return when(gameState) {
                 GameState.IDLE -> turnString
                 GameState.CHECK -> "Check - $turnString"
-                GameState.CHECKMATE -> "Checkmate - " + if (turn == PieceColor.White) "Black Win's" else "White Win's"
+                GameState.CHECKMATE -> "Checkmate - " + if (turn == PieceColor.White) "Black Wins" else "White Wins"
                 GameState.STALEMATE -> "Draw - Stalemate"
             }
         }
