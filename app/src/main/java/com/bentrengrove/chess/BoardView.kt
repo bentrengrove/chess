@@ -8,7 +8,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -73,7 +76,14 @@ fun BoardBackground(lastMove: Move?, selection: Position?, dangerPositions: List
                             .clickable(
                                     onClick = { didTap(position) }
                             )
-                    )
+                    ) {
+                        if (y == 7) {
+                            Text(text = "${'a'+x}", modifier = Modifier.align(Alignment.BottomEnd), style = MaterialTheme.typography.caption, color = Color.Black.copy(0.5f))
+                        }
+                        if (x == 0) {
+                            Text(text = "${8-y}", modifier = Modifier.align(Alignment.TopStart), style = MaterialTheme.typography.caption, color = Color.Black.copy(0.5f))
+                        }
+                    }
                 }
             }
         }
