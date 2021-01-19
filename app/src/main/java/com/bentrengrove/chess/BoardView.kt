@@ -1,6 +1,7 @@
 package com.bentrengrove.chess
 
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.animateAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
@@ -19,7 +20,6 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
 import com.bentrengrove.chess.ui.BoardColors
-
 
 @Composable
 fun GameView(modifier: Modifier = Modifier, game: Game, selection: Position?, moves: List<Position>, didTap: (Position)->Unit) {
@@ -107,19 +107,27 @@ private fun BoardLayout(
     }
 }
 
+private const val percentFill = 1f/8f
+@Composable
 private fun constraintsFor(pieces: List<Pair<Position, Piece>>): ConstraintSet {
+    val guidelines = pieces.sortedBy { it.second.id }.associateBy { it.second.id }.mapValues { (_, value) ->
+        val position = value.first
+        animateAsState(targetValue = position.x / 8f) to animateAsState(targetValue = position.y / 8f)
+    }
+
     return ConstraintSet {
-        val horizontalGuidelines = (0..8).map { createGuidelineFromAbsoluteLeft(it.toFloat() / 8f) }
-        val verticalGuidelines = (0..8).map { createGuidelineFromTop(it.toFloat() / 8f) }
-        pieces.forEach { (position, piece) ->
+        pieces.forEach { (_, piece) ->
+            val leftPercent = guidelines[piece.id]!!.first
+            val topPercent = guidelines[piece.id]!!.second
+
+            val leftGuide = createGuidelineFromAbsoluteLeft(leftPercent.value)
+            val topGuide = createGuidelineFromTop(topPercent.value)
             val pieceRef = createRefFor(piece.id)
             constrain(pieceRef) {
-                top.linkTo(verticalGuidelines[position.y])
-                bottom.linkTo(verticalGuidelines[position.y + 1])
-                start.linkTo(horizontalGuidelines[position.x])
-                end.linkTo((horizontalGuidelines[position.x + 1]))
-                width = Dimension.fillToConstraints
-                height = Dimension.fillToConstraints
+                top.linkTo(topGuide)
+                start.linkTo(leftGuide)
+                width = Dimension.percent(percentFill)
+                height = Dimension.percent(percentFill)
             }
         }
     }
