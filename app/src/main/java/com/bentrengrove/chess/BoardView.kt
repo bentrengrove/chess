@@ -1,7 +1,8 @@
 package com.bentrengrove.chess
 
+import android.util.Log
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.animateAsState
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
@@ -11,7 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,8 +30,9 @@ fun GameView(modifier: Modifier = Modifier, game: Game, selection: Position?, mo
         // Highlight king in check, could potentially highlight other things here
         val dangerPositions = listOf(PieceColor.White, PieceColor.Black).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
 
-        BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap)
-        BoardLayout(pieces = board.allPieces, modifier = Modifier.fillMaxWidth().aspectRatio(1.0f))
+        val lastMove = game.history.lastOrNull()
+        BoardBackground(lastMove, selection, dangerPositions, didTap)
+        BoardLayout(pieces = board.allPieces, modifier = Modifier.fillMaxWidth().aspectRatio(1.0f), lastMove = lastMove)
         MovesView(board, moves)
     }
 }
@@ -98,30 +100,50 @@ fun PieceView(piece: Piece, modifier: Modifier = Modifier) {
 @Composable
 private fun BoardLayout(
         modifier: Modifier = Modifier,
-        pieces: List<Pair<Position, Piece>>) {
-    val constraints = constraintsFor(pieces)
-    ConstraintLayout(constraints, modifier) {
-        pieces.forEach { (_, piece) ->
-            PieceView(piece = piece, modifier = Modifier.layoutId(piece.id))
+        pieces: List<Pair<Position, Piece>>,
+        lastMove: Move?) {
+    var lastPieces by remember { mutableStateOf<Map<String, Position>>(mapOf()) }
+    var movedPiece by remember { mutableStateOf<Pair<Move, String>?>(null) }
+
+    if (lastMove != null && (lastMove != movedPiece?.first)) {
+        val moved = findMovedPiece(pieces, lastPieces)
+        if (moved != null) {
+            movedPiece = lastMove to moved
         }
     }
-}
 
-private const val percentFill = 1f/8f
-@Composable
-private fun constraintsFor(pieces: List<Pair<Position, Piece>>): ConstraintSet {
-    val guidelines = pieces.sortedBy { it.second.id }.associateBy { it.second.id }.mapValues { (_, value) ->
-        val position = value.first
-        animateAsState(targetValue = position.x / 8f) to animateAsState(targetValue = position.y / 8f)
+    val fromY = lastMove?.from?.y ?: 0
+    val toY = (lastMove?.to?.y ?: 0).toFloat()
+    var y: Float by remember { mutableStateOf(fromY.toFloat()) }
+
+    LaunchedEffect(movedPiece) {
+        animate(fromY.toFloat(), toY) { value, _ ->
+            y = value
+            Log.d("ANIMATE", "Y update $value")
+        }
     }
 
-    return ConstraintSet {
-        pieces.forEach { (_, piece) ->
-            val leftPercent = guidelines[piece.id]!!.first
-            val topPercent = guidelines[piece.id]!!.second
+    val fromX = lastMove?.from?.x ?: 0
+    val toX = (lastMove?.to?.x ?: 0).toFloat()
+    var x: Float by remember { mutableStateOf(fromX.toFloat()) }
 
-            val leftGuide = createGuidelineFromAbsoluteLeft(leftPercent.value)
-            val topGuide = createGuidelineFromTop(topPercent.value)
+    LaunchedEffect(subject = movedPiece) {
+        animate(fromX.toFloat(), toX) { value, _ ->
+            x = value
+            Log.d("ANIMATE", "X update $value")
+        }
+    }
+
+    lastPieces = pieces.associateBy { it.second.id }.mapValues { (_, value) -> value.first }
+
+    Log.d("ANIMATE", "$movedPiece $fromY $y")
+    val constraints = ConstraintSet {
+        val horizontalGuidelines = (0..8).map { createGuidelineFromAbsoluteLeft(it.toFloat() / 8f) }
+        val verticalGuidelines = (0..8).map { createGuidelineFromTop(it.toFloat() / 8f) }
+
+        pieces.forEach { (position, piece) ->
+            val leftGuide = if (piece.id == movedPiece?.second) createGuidelineFromAbsoluteLeft(x/8f) else horizontalGuidelines[position.x]
+            val topGuide = if (piece.id == movedPiece?.second) createGuidelineFromTop(y/8f) else verticalGuidelines[position.y]
             val pieceRef = createRefFor(piece.id)
             constrain(pieceRef) {
                 top.linkTo(topGuide)
@@ -131,4 +153,30 @@ private fun constraintsFor(pieces: List<Pair<Position, Piece>>): ConstraintSet {
             }
         }
     }
+
+    ConstraintLayout(constraints, modifier) {
+        pieces.forEach { (_, piece) ->
+            PieceView(piece = piece, modifier = Modifier.layoutId(piece.id))
+        }
+    }
+}
+
+private const val percentFill = 1f/8f
+@Composable
+private fun constraintsFor(pieces: List<Pair<Position, Piece>>, lastMove: Move?) {
+
+}
+
+private fun findMovedPiece(pieces: List<Pair<Position, Piece>>, oldPieces: Map<String, Position>): String? {
+    if (oldPieces.isEmpty()) return null
+    for (pair in pieces) {
+        val position = pair.first
+        val pieceId = pair.second.id
+
+        if (oldPieces[pieceId] != position) {
+            return pieceId
+        }
+    }
+
+    return null
 }
