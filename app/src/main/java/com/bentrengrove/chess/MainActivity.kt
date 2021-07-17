@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun GameView() {
     val ai by remember { mutableStateOf(AI(PieceColor.Black)) }
-    var aiEnabled by remember { mutableStateOf(false) }
+    var aiEnabled by remember { mutableStateOf(true) }
     var moveResult by remember { mutableStateOf<MoveResult>(MoveResult.Success(Game()))}
     var selection: Position? by remember { mutableStateOf(null) }
     var forwardHistory by remember { mutableStateOf<List<Move>>(listOf())}
@@ -68,17 +68,17 @@ fun GameView() {
                     moveResult = game.doMove(sel, it)
                     selection = null
                     forwardHistory = listOf()
+                }
+            }
 
-                    if (aiEnabled && game.turn == PieceColor.Black) {
-                        GlobalScope.launch {
-                            val nextMove = ai.calculateNextMove(game, PieceColor.Black)
-                            if (nextMove != null) {
-                                val aiResult = game.doMove(nextMove.from, nextMove.to)
-                                moveResult = when (aiResult) {
-                                    is MoveResult.Success -> aiResult
-                                    is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
-                                }
-                            }
+            if (aiEnabled && game.turn == PieceColor.Black) {
+                LaunchedEffect(key1 = game) {
+                    val nextMove = ai.calculateNextMove(game, PieceColor.Black)
+                    if (nextMove != null) {
+                        val aiResult = game.doMove(nextMove.from, nextMove.to)
+                        moveResult = when (aiResult) {
+                            is MoveResult.Success -> aiResult
+                            is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
                         }
                     }
                 }
@@ -91,7 +91,9 @@ fun GameView() {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = game.displayGameState, style = MaterialTheme.typography.body1, modifier = Modifier.padding(horizontal = 8.dp))
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.padding(8.dp).align(Alignment.CenterHorizontally)) {
+                Row(modifier = Modifier
+                    .padding(8.dp)
+                    .align(Alignment.CenterHorizontally)) {
                     Button(onClick = {
                         val lastMove = game.history.last()
                         val newHistory = game.history.subList(0, game.history.size - 1)
