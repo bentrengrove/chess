@@ -16,8 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layoutId
-import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.ConstraintSet
+import androidx.constraintlayout.compose.Dimension
 import com.bentrengrove.chess.ui.BoardColors
 
 
@@ -92,7 +95,7 @@ fun BoardBackground(lastMove: Move?, selection: Position?, dangerPositions: List
 
 @Composable
 fun PieceView(piece: Piece, modifier: Modifier = Modifier) {
-    Image(imageResource(id = piece.imageResource()), modifier = modifier.padding(4.dp))
+    Image(painterResource(id = piece.imageResource()), modifier = modifier.padding(4.dp), contentDescription = piece.id)
 }
 
 @Composable
