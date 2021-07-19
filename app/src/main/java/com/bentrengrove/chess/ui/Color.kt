@@ -2,10 +2,10 @@ package com.bentrengrove.chess.ui
 
 import androidx.compose.ui.graphics.Color
 
-val purple200 = Color(0xFFBB86FC)
-val purple500 = Color(0xFF6200EE)
-val purple700 = Color(0xFF3700B3)
 val teal200 = Color(0xFF03DAC5)
+val blue800 = Color(0xFF1565c0)
+val blueVariant = Color(0xFF003b8e)
+val blue300 = Color(0xFF64b5f6)
 
 object BoardColors {
     val lastMoveColor = Color(20,85,30,128)
