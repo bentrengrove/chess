@@ -5,9 +5,12 @@ Ported from [https://github.com/nicklockwood/Chess](https://github.com/nicklockw
 
 Work In Progress
 
+I use this project as a experimentation and learning environment. The code is by no means meant as an example of good clean code.
+If anything it is the opposite.
+
 ## Screenshots
 
-![Home](/screenshots/shot1.png)
+<img src="/screenshots/shot1.png" width="260">
 
 ## TODO
 - Animating pieces
