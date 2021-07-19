@@ -1,4 +1,4 @@
-package com.bentrengrove.chess
+package com.bentrengrove.chess.gamescreen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -9,55 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
-
-class GameViewModel: ViewModel() {
-    private var _moveResult = MutableStateFlow<MoveResult>(MoveResult.Success(Game()))
-    val moveResult: Flow<MoveResult> get() = _moveResult
-
-    private var forwardHistory = MutableStateFlow<List<Move>>(listOf())
-
-    val canGoBack = moveResult.map {
-        val game = (_moveResult.value as? MoveResult.Success)?.game ?: return@map false
-        return@map game.history.isNotEmpty()
-    }
-    val canGoForward = forwardHistory.map { it.isNotEmpty() }
-
-    fun updateResult(result: MoveResult) {
-        _moveResult.tryEmit(result)
-    }
-
-    fun newGame() {
-        updateResult(MoveResult.Success(Game()))
-        forwardHistory.tryEmit(listOf())
-    }
-
-    fun clearForwardHistory() {
-        forwardHistory.tryEmit(listOf())
-    }
-
-    fun goBackMove() {
-        val game = (_moveResult.value as? MoveResult.Success)?.game ?: return
-
-        val lastMove = game.history.last()
-        val newHistory = game.history.subList(0, game.history.size - 1)
-        val newBoard = Board.fromHistory(newHistory)
-        updateResult(MoveResult.Success(Game(newBoard, newHistory)))
-        forwardHistory.tryEmit(forwardHistory.value + listOf(lastMove))
-    }
-
-    fun goForwardMove() {
-        val game = (_moveResult.value as? MoveResult.Success)?.game ?: return
-
-        val move = forwardHistory.value.last()
-        forwardHistory.tryEmit(forwardHistory.value.subList(0, forwardHistory.value.size - 1))
-        updateResult(game.doMove(move.from, move.to))
-    }
-}
+import com.bentrengrove.chess.engine.*
 
 @Composable
 fun GameActions(viewModel: GameViewModel = viewModel()) {
@@ -74,8 +27,6 @@ fun GameActions(viewModel: GameViewModel = viewModel()) {
 
 @Composable
 fun GameView(viewModel: GameViewModel = viewModel()) {
-    val ai by remember { mutableStateOf(AI(PieceColor.Black)) }
-    var aiEnabled by remember { mutableStateOf(false) }
     var selection: Position? by remember { mutableStateOf(null) }
 
     val moveResult by viewModel.moveResult.collectAsState(initial = MoveResult.Success(Game()))
@@ -116,20 +67,6 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                 }
             }
 
-            if (aiEnabled && game.turn == PieceColor.Black) {
-                LaunchedEffect(key1 = game) {
-                    val nextMove = ai.calculateNextMove(game, PieceColor.Black)
-                    if (nextMove != null) {
-                        val aiResult = game.doMove(nextMove.from, nextMove.to)
-                        val finalAiResult = when (aiResult) {
-                            is MoveResult.Success -> aiResult
-                            is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
-                        }
-                        viewModel.updateResult(finalAiResult)
-                    }
-                }
-            }
-
             Column {
                 GameView(
                     game = game,
@@ -149,7 +86,7 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                 Text(
                     text = game.displayGameState,
                     style = MaterialTheme.typography.body1,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp).align(Alignment.CenterHorizontally)
                 )
             }
         }

@@ -1,6 +1,7 @@
-package com.bentrengrove.chess
+package com.bentrengrove.chess.engine
 
 import androidx.annotation.DrawableRes
+import com.bentrengrove.chess.R
 
 sealed class PieceType(val value: Int) {
     object Pawn: PieceType(1)

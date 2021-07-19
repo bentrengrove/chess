@@ -1,4 +1,4 @@
-package com.bentrengrove.chess
+package com.bentrengrove.chess.gamescreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
@@ -8,6 +8,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bentrengrove.chess.engine.Piece
 
 private val CAPTURED_PIECE_SIZE = 32.dp
 @Composable

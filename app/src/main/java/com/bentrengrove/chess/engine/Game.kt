@@ -1,4 +1,4 @@
-package com.bentrengrove.chess
+package com.bentrengrove.chess.engine
 
 import kotlin.math.abs
 
@@ -14,7 +14,7 @@ enum class GameState {
 
 sealed class MoveResult {
     data class Success(val game: Game): MoveResult()
-    data class Promotion(val onPieceSelection: (PieceType)->MoveResult): MoveResult()
+    data class Promotion(val onPieceSelection: (PieceType)-> MoveResult): MoveResult()
 }
 
 data class Game(val board: Board = Board(), val history: List<Move> = listOf()) {

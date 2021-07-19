@@ -1,4 +1,4 @@
-package com.bentrengrove.chess
+package com.bentrengrove.chess.gamescreen
 
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.ConstraintSet
 import androidx.constraintlayout.compose.Dimension
+import com.bentrengrove.chess.engine.*
 import com.bentrengrove.chess.ui.BoardColors
 
 

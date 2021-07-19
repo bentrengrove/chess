@@ -1,4 +1,4 @@
-package com.bentrengrove.chess
+package com.bentrengrove.chess.engine
 
 class AI(val color: PieceColor) {
     // This AI doesn't work at all currently
