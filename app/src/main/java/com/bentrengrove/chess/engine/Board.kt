@@ -42,6 +42,12 @@ private fun pieceTypeFromId(id: String): Pair<PieceType, PieceColor> {
 }
 data class Piece(val id: String, val type: PieceType, val color: PieceColor) {
     companion object {
+        fun pieceOrNullFromString(id: String?): Piece? {
+            val id = id ?: return null
+            val types = pieceTypeFromId(id)
+            return Piece(id, types.first, types.second)
+        }
+
         fun pieceFromString(id: String): Piece {
             val types = pieceTypeFromId(id)
             return Piece(id, types.first, types.second)
@@ -77,14 +83,14 @@ data class Position(val x: Int, val y: Int) {
 }
 
 private val INITIAL_BOARD = listOf(
-    listOf("BR0", "BN1", "BB2", "BQ3", "BK4", "BB5", "BN6", "BR7").map { Piece.pieceFromString(it) },
-    listOf("BP0", "BP1", "BP2", "BP3", "BP4", "BP5", "BP6", "BP7").map { Piece.pieceFromString(it) },
-    listOf(null, null, null, null, null, null, null, null),
-    listOf(null, null, null, null, null, null, null, null),
-    listOf(null, null, null, null, null, null, null, null),
-    listOf(null, null, null, null, null, null, null, null),
-    listOf("WP0", "WP1", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7").map { Piece.pieceFromString(it) },
-    listOf("WR0", "WN1", "WB2", "WQ3", "WK4", "WB5", "WN6", "WR7").map { Piece.pieceFromString(it) }
+    listOf("BR0", "BN1", "BB2", "BQ3", "BK4", "BB5", "BN6", "BR7").map { Piece.pieceOrNullFromString(it) },
+    listOf("BP0", "BP1", "BP2", "BP3", "BP4", "BP5", "BP6", "BP7").map { Piece.pieceOrNullFromString(it) },
+    listOf(null, null, null, null, null, null, null, null).map { Piece.pieceOrNullFromString(it) },
+    listOf(null, null, null, null, null, null, null, null).map { Piece.pieceOrNullFromString(it) },
+    listOf(null, null, null, null, null, null, null, null).map { Piece.pieceOrNullFromString(it) },
+    listOf(null, null, null, null, null, null, null, null).map { Piece.pieceOrNullFromString(it) },
+    listOf("WP0", "WP1", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7").map { Piece.pieceOrNullFromString(it) },
+    listOf("WR0", "WN1", "WB2", "WQ3", "WK4", "WB5", "WN6", "WR7").map { Piece.pieceOrNullFromString(it) }
 )
 val STARTING_PIECES = INITIAL_BOARD.flatten().filterNotNull()
 
