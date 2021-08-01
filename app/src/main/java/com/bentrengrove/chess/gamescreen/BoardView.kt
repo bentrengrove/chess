@@ -1,6 +1,7 @@
 package com.bentrengrove.chess.gamescreen
 
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
@@ -114,8 +115,10 @@ private fun BoardLayout(
         pieces: List<Pair<Position, Piece>>) {
     val constraints: ConstraintSet = constraintsFor(pieces)
 
-    AnimatingConstraintLayout(
+    ConstraintLayout(
         modifier = modifier,
+        animateChanges = true,
+        animationSpec = spring(),
         constraintSet = constraints
     ) {
         pieces.forEach { (_, piece) ->
