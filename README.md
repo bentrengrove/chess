@@ -13,5 +13,4 @@ If anything it is the opposite.
 <img src="/screenshots/shot1.png" width="260">
 
 ## TODO
-- Animating pieces
 - Better AI (the current one is really terrible, effectively random)
