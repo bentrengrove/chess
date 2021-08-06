@@ -67,7 +67,7 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                 }
             }
 
-            Column {
+            Column(Modifier.fillMaxHeight()) {
                 GameView(
                     game = game,
                     selection = selection,

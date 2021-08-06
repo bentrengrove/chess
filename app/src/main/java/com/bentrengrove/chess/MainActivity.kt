@@ -3,27 +3,32 @@ package com.bentrengrove.chess
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.bentrengrove.chess.gamescreen.GameActions
 import com.bentrengrove.chess.gamescreen.GameView
 import com.bentrengrove.chess.gamescreen.GameViewModel
 import com.bentrengrove.chess.ui.ChessTheme
+import com.google.accompanist.navigation.animation.AnimatedNavHost
+import com.google.accompanist.navigation.animation.composable
+import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 
 class MainActivity : AppCompatActivity() {
+    @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             ChessTheme {
-                val navController = rememberNavController()
+                val navController = rememberAnimatedNavController()
                 val gameViewModel: GameViewModel = viewModel()
 
                 Scaffold(
@@ -55,15 +60,27 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 ) {
-                    NavHost(navController = navController, startDestination = Screen.Title.route) {
+                    AnimatedNavHost(
+                        navController = navController,
+                        startDestination = Screen.Title.route,) {
                         composable(Screen.Title.route) { TitleView(navController, gameViewModel) }
-                        composable(Screen.Game.route) { GameView(gameViewModel) }
+                        composable(
+                            Screen.Game.route,
+                            enterTransition = { _, _ -> slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(
+                                transitionTime)) },
+                            exitTransition = { _, _ -> slideOutHorizontally(targetOffsetX = { -1000 }, animationSpec = tween(transitionTime)) },
+                            popExitTransition = { _, _ -> slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(transitionTime)) },
+                        ) {
+                            GameView(gameViewModel)
+                        }
                     }
                 }
             }
         }
     }
 }
+
+private val transitionTime = 333
 
 sealed class Screen(val route: String,
                     val title: String,
