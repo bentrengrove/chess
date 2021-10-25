@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.bentrengrove.chess.gamescreen.GameActions
 import com.bentrengrove.chess.gamescreen.GameView
 import com.bentrengrove.chess.gamescreen.GameViewModel
