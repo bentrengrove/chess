@@ -1,28 +1,47 @@
 package com.bentrengrove.chess.gamescreen
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Button
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.bentrengrove.chess.engine.*
+import com.bentrengrove.chess.engine.Game
+import com.bentrengrove.chess.engine.MoveResult
+import com.bentrengrove.chess.engine.PieceColor
+import com.bentrengrove.chess.engine.PieceType
+import com.bentrengrove.chess.engine.Position
 
 @Composable
 fun GameActions(viewModel: GameViewModel = viewModel()) {
     val canGoBack by viewModel.canGoBack.collectAsState(initial = false)
     IconButton(onClick = { viewModel.goBackMove() }, enabled = canGoBack) {
-        Icon(Icons.Filled.ArrowBack, contentDescription = "Undo Move")
-    }
+    Icon(Icons.Filled.ArrowBack, contentDescription = "Undo Move")
+}
 
     val canGoForward by viewModel.canGoForward.collectAsState(initial = false)
     IconButton(onClick = { viewModel.goForwardMove() }, enabled = canGoForward) {
-        Icon(Icons.Filled.ArrowForward, contentDescription = "Redo Move")
-    }
+    Icon(Icons.Filled.ArrowForward, contentDescription = "Redo Move")
+}
 }
 
 @Composable

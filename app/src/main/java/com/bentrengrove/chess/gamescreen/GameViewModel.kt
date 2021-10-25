@@ -2,13 +2,20 @@ package com.bentrengrove.chess.gamescreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bentrengrove.chess.engine.*
+import com.bentrengrove.chess.engine.AI
+import com.bentrengrove.chess.engine.Board
+import com.bentrengrove.chess.engine.Game
+import com.bentrengrove.chess.engine.GameState
+import com.bentrengrove.chess.engine.Move
+import com.bentrengrove.chess.engine.MoveResult
+import com.bentrengrove.chess.engine.PieceColor
+import com.bentrengrove.chess.engine.PieceType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-class GameViewModel: ViewModel() {
+class GameViewModel : ViewModel() {
     private var _moveResult = MutableStateFlow<MoveResult>(MoveResult.Success(Game()))
     val moveResult: Flow<MoveResult> get() = _moveResult
 
@@ -28,7 +35,8 @@ class GameViewModel: ViewModel() {
 
         val game = (result as? MoveResult.Success)?.game ?: return
         if (aiEnabled && game.turn == PieceColor.Black &&
-            listOf(GameState.CHECK, GameState.IDLE).contains(game.gameState)) {
+            listOf(GameState.CHECK, GameState.IDLE).contains(game.gameState)
+        ) {
 
             viewModelScope.launch {
                 val nextMove = ai.calculateNextMove(game, PieceColor.Black)

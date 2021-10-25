@@ -13,8 +13,8 @@ enum class GameState {
 }
 
 sealed class MoveResult {
-    data class Success(val game: Game): MoveResult()
-    data class Promotion(val onPieceSelection: (PieceType)-> MoveResult): MoveResult()
+    data class Success(val game: Game) : MoveResult()
+    data class Promotion(val onPieceSelection: (PieceType) -> MoveResult) : MoveResult()
 }
 
 data class Game(val board: Board = Board(), val history: List<Move> = listOf()) {
@@ -34,7 +34,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
     val displayGameState: String
         get() {
             val turnString = if (turn == PieceColor.White) "White's Turn" else "Black's Turn"
-            return when(gameState) {
+            return when (gameState) {
                 GameState.IDLE -> turnString
                 GameState.CHECK -> "Check - $turnString"
                 GameState.CHECKMATE -> "Checkmate - " + if (turn == PieceColor.White) "Black Wins" else "White Wins"
@@ -46,9 +46,9 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: PieceColor.White
 
     fun allMovesFor(position: Position): Sequence<Move> {
-         return board.allPositions.asSequence()
-             .map { Move(position, it) }
-             .filter { canMove(it.from, it.to) }
+        return board.allPositions.asSequence()
+            .map { Move(position, it) }
+            .filter { canMove(it.from, it.to) }
     }
 
     fun allMovesFor(color: PieceColor): Sequence<Move> {
@@ -100,7 +100,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                     is PieceColor.White -> {
                         if (from.y == 6) {
                             listOf(-1, -2).contains(delta.y) &&
-                                    !board.piecesExist(from, to)
+                                !board.piecesExist(from, to)
                         } else {
                             delta.y == -1
                         }
@@ -108,7 +108,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                     is PieceColor.Black -> {
                         if (from.y == 1) {
                             listOf(1, 2).contains(delta.y) &&
-                                    !board.piecesExist(from, to)
+                                !board.piecesExist(from, to)
                         } else {
                             delta.y == 1
                         }
@@ -231,7 +231,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         if (pieceHasMoved(rookPosition)) return false
 
         return ((if (isKingSide) 5..6 else 1..3).map { board.pieceAt(Position(it, kingsRow)) }.find { it != null } == null) &&
-                ((if (isKingSide) 4..6 else 2..4).map { positionIsThreatened(Position(it, kingsRow ), by = this.turn.other()) }.find { it == true } == null)
+            ((if (isKingSide) 4..6 else 2..4).map { positionIsThreatened(Position(it, kingsRow), by = this.turn.other()) }.find { it == true } == null)
     }
 
     fun enPassantTakePermitted(from: Position, to: Position): Boolean {
@@ -246,7 +246,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
         return when (lastPiece.color) {
             is PieceColor.White -> {
-               lastMove.from.y == to.y + 1 && lastMove.to.y == to.y - 1
+                lastMove.from.y == to.y + 1 && lastMove.to.y == to.y - 1
             }
             is PieceColor.Black -> {
                 lastMove.from.y == to.y - 1 && lastMove.to.y == to.y + 1
@@ -268,8 +268,8 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 
 private fun Board.piecesExist(between: Position, and: Position): Boolean {
     val step = Delta(
-        x = if(between.x > and.x) -1 else if (between.x < and.x) 1 else 0,
-        y = if(between.y > and.y) -1 else if (between.y < and.y) 1 else 0
+        x = if (between.x > and.x) -1 else if (between.x < and.x) 1 else 0,
+        y = if (between.y > and.y) -1 else if (between.y < and.y) 1 else 0
     )
     var position = between
     position += step

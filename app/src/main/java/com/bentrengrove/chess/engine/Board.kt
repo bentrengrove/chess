@@ -4,17 +4,17 @@ import androidx.annotation.DrawableRes
 import com.bentrengrove.chess.R
 
 sealed class PieceType(val value: Int) {
-    object Pawn: PieceType(1)
-    object Knight: PieceType(3)
-    object Bishop: PieceType(3)
-    object Rook: PieceType(5)
-    object Queen: PieceType(8)
-    object King: PieceType(0)
+    object Pawn : PieceType(1)
+    object Knight : PieceType(3)
+    object Bishop : PieceType(3)
+    object Rook : PieceType(5)
+    object Queen : PieceType(8)
+    object King : PieceType(0)
 }
 
 sealed class PieceColor {
-    object White: PieceColor()
-    object Black: PieceColor()
+    object White : PieceColor()
+    object Black : PieceColor()
 
     fun other(): PieceColor {
         return if (this == White) Black else White
