@@ -6,15 +6,19 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,15 +39,16 @@ import com.bentrengrove.chess.engine.Position
 fun GameActions(viewModel: GameViewModel = viewModel()) {
     val canGoBack by viewModel.canGoBack.collectAsState(initial = false)
     IconButton(onClick = { viewModel.goBackMove() }, enabled = canGoBack) {
-    Icon(Icons.Filled.ArrowBack, contentDescription = "Undo Move")
-}
+        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Undo Move")
+    }
 
     val canGoForward by viewModel.canGoForward.collectAsState(initial = false)
     IconButton(onClick = { viewModel.goForwardMove() }, enabled = canGoForward) {
-    Icon(Icons.Filled.ArrowForward, contentDescription = "Redo Move")
-}
+        Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = "Redo Move")
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameView(viewModel: GameViewModel = viewModel()) {
     var selection: Position? by remember { mutableStateOf(null) }
@@ -56,22 +61,19 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
             val onButtonClicked: (PieceType) -> Unit = {
                 viewModel.updateResult(onPieceSelection(it))
             }
-            AlertDialog(
-                onDismissRequest = {},
-                buttons = {
-                    Button({ onButtonClicked(PieceType.Queen) }) { Text(text = "Queen") }
-                    Button({ onButtonClicked(PieceType.Rook) }) { Text(text = "Rook") }
-                    Button({ onButtonClicked(PieceType.Knight) }) { Text(text = "Knight") }
-                    Button({ onButtonClicked(PieceType.Bishop) }) { Text(text = "Bishop") }
-                },
-                title = {
-                    Text(text = "Promote to")
-                },
-                text = {
-                    Text(text = "Please choose a piece type to promote the pawn to")
+            BasicAlertDialog(onDismissRequest = {}) {
+                Surface {
+                    Column {
+                        Text(text = "Promote to")
+                        Button({ onButtonClicked(PieceType.Queen) }) { Text(text = "Queen") }
+                        Button({ onButtonClicked(PieceType.Rook) }) { Text(text = "Rook") }
+                        Button({ onButtonClicked(PieceType.Knight) }) { Text(text = "Knight") }
+                        Button({ onButtonClicked(PieceType.Bishop) }) { Text(text = "Bishop") }
+                    }
                 }
-            )
+            }
         }
+
         is MoveResult.Success -> {
             val game = moveResult.game
 
@@ -91,21 +93,23 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                     game = game,
                     selection = selection,
                     moves = game.movesForPieceAt(selection),
-                    didTap = onSelect
+                    didTap = onSelect,
                 )
                 CapturedView(
                     pieces = game.capturedPiecesFor(PieceColor.White),
-                    Modifier.fillMaxWidth()
+                    Modifier.fillMaxWidth(),
                 )
                 CapturedView(
                     pieces = game.capturedPiecesFor(PieceColor.Black),
-                    Modifier.fillMaxWidth()
+                    Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = game.displayGameState,
-                    style = MaterialTheme.typography.body1,
-                    modifier = Modifier.padding(horizontal = 8.dp).align(Alignment.CenterHorizontally)
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .align(Alignment.CenterHorizontally),
                 )
             }
         }

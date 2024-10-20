@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,19 +23,19 @@ import com.bentrengrove.chess.ui.ChessTheme
 @Composable
 fun TitleView(navController: NavController, gameViewModel: GameViewModel) {
     Column(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colors.primaryVariant).padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer).padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = "Chess", style = MaterialTheme.typography.h2, color = MaterialTheme.colors.onPrimary)
+        Text(text = "Chess", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimary)
         Spacer(modifier = Modifier.height(32.dp))
         GameButton(
             onClick = { newGame(navController, gameViewModel, aiEnabled = false) },
-            text = "Two Players"
+            text = "Two Players",
         )
         Spacer(modifier = Modifier.height(16.dp))
         GameButton(
             onClick = { newGame(navController, gameViewModel, aiEnabled = true) },
-            text = "vs Computer"
+            text = "vs Computer",
         )
     }
 }
@@ -44,9 +44,9 @@ fun TitleView(navController: NavController, gameViewModel: GameViewModel) {
 private fun GameButton(onClick: () -> Unit, text: String) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(text = text, style = MaterialTheme.typography.h4)
+        Text(text = text, style = MaterialTheme.typography.headlineSmall)
     }
 }
 
@@ -61,7 +61,7 @@ private fun GameButtonPreview() {
 private fun newGame(
     navController: NavController,
     gameViewModel: GameViewModel,
-    aiEnabled: Boolean
+    aiEnabled: Boolean,
 ) {
     gameViewModel.newGame(aiEnabled)
     navController.navigate(Screen.Game.route)

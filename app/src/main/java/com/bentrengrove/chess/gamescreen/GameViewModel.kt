@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class GameViewModel : ViewModel() {
-    private var _moveResult = MutableStateFlow<MoveResult>(MoveResult.Success(Game()))
+    private val _moveResult = MutableStateFlow<MoveResult>(MoveResult.Success(Game()))
     val moveResult: Flow<MoveResult> get() = _moveResult
 
     private var forwardHistory = MutableStateFlow<List<Move>>(listOf())
@@ -37,7 +37,6 @@ class GameViewModel : ViewModel() {
         if (aiEnabled && game.turn == PieceColor.Black &&
             listOf(GameState.CHECK, GameState.IDLE).contains(game.gameState)
         ) {
-
             viewModelScope.launch {
                 val nextMove = ai.calculateNextMove(game, PieceColor.Black)
                 if (nextMove != null) {

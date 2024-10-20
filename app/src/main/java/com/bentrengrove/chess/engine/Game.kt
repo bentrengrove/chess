@@ -137,7 +137,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                     Delta(x = 1, y = -2),
                     Delta(x = -1, y = -2),
                     Delta(x = 2, y = -1),
-                    Delta(x = -2, y = -1)
+                    Delta(x = -2, y = -1),
                 ).contains(delta)
             }
         }
@@ -269,7 +269,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
 private fun Board.piecesExist(between: Position, and: Position): Boolean {
     val step = Delta(
         x = if (between.x > and.x) -1 else if (between.x < and.x) 1 else 0,
-        y = if (between.y > and.y) -1 else if (between.y < and.y) 1 else 0
+        y = if (between.y > and.y) -1 else if (between.y < and.y) 1 else 0,
     )
     var position = between
     position += step
