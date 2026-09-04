@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
@@ -22,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import com.bentrengrove.chess.gamescreen.GameActions
 import com.bentrengrove.chess.gamescreen.GameView
@@ -41,7 +44,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun Content() {
     ChessTheme {
@@ -76,15 +79,30 @@ fun Content() {
                     ),
                 actions = actions,
             )
-            NavDisplay(
-                backStack = backStack,
-                onBack = { backStack.removeLastOrNull() },
-                entryProvider =
-                    entryProvider<NavKey> {
-                        entry<Screen.Title> { TitleView(backStack, gameViewModel) }
-                        entry<Screen.Game> { GameView(gameViewModel) }
-                    },
-            )
+            SharedTransitionLayout {
+                NavDisplay(
+                    backStack = backStack,
+                    onBack = { backStack.removeLastOrNull() },
+                    entryProvider =
+                        entryProvider<NavKey> {
+                            entry<Screen.Title> {
+                                TitleView(
+                                    backStack = backStack,
+                                    gameViewModel = gameViewModel,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                                )
+                            }
+                            entry<Screen.Game> {
+                                GameView(
+                                    viewModel = gameViewModel,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                                )
+                            }
+                        },
+                )
+            }
         }
     }
 }

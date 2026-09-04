@@ -40,6 +40,8 @@ import com.bentrengrove.chess.engine.PieceColor
 import com.bentrengrove.chess.engine.Position
 import com.bentrengrove.chess.ui.BoardColors
 
+const val CHESS_BOARD_SHARED_ELEMENT_KEY = "chess-board"
+
 @Composable
 fun GameView(
     modifier: Modifier = Modifier,

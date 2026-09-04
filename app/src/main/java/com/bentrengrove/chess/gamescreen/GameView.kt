@@ -1,6 +1,9 @@
 package com.bentrengrove.chess.gamescreen
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,8 +60,13 @@ fun GameActions(viewModel: GameViewModel = viewModel()) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun GameView(viewModel: GameViewModel = viewModel()) {
+fun GameView(
+    viewModel: GameViewModel = viewModel(),
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+) {
     var selection: Position? by remember { mutableStateOf(null) }
 
     val moveResult by viewModel.moveResult.collectAsState(initial = MoveResult.Success(Game()))
@@ -83,12 +91,19 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxHeight()) {
-            GameView(
-                game = game,
-                selection = selection,
-                moves = game.movesForPieceAt(selection),
-                didTap = onSelect,
-            )
+            with(sharedTransitionScope) {
+                GameView(
+                    modifier =
+                        Modifier.sharedElement(
+                            sharedContentState = rememberSharedContentState(key = CHESS_BOARD_SHARED_ELEMENT_KEY),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                        ),
+                    game = game,
+                    selection = selection,
+                    moves = game.movesForPieceAt(selection),
+                    didTap = onSelect,
+                )
+            }
             Column(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
