@@ -3,7 +3,6 @@ package com.bentrengrove.chess.engine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Test
 
 class GameTurnAndStateTest {
@@ -65,44 +64,45 @@ class GameTurnAndStateTest {
     }
 
     @Test
-    fun documentsBug_stalemateIsReportedAsIdleInstead() {
+    fun stalemateIsDetectedWhenNotInCheckButNoLegalMoves() {
         // Textbook king+queen stalemate: black king on a8 has no legal move and isn't in
-        // check. Correct chess says GameState.STALEMATE. The engine says IDLE.
-        //
-        // Why: gameState's escape search does
-        //   val newBoard = doMove(it.from, it.to)
-        //   (newBoard is Success) && !newBoard.game.kingIsInCheck(color)
-        // but doMove already refuses to actually make an unsafe move - it returns
-        // Success(oldGame), the board UNCHANGED, rather than Success(newGame) or a
-        // non-Success result (see GameCheckSafetyTest). So for every pseudo-legal move that
-        // would actually be unsafe, "newBoard.game" is just the current position again, and
-        // the redundant safety re-check re-evaluates the CURRENT position's check status
-        // instead of the attempted move's. When the current position isn't in check - which
-        // is exactly what stalemate means - that re-check always reads "safe", so gameState
-        // concludes a legal move exists even though every one of them was silently reverted.
-        //
-        // This doesn't affect checkmate detection: there, the current (unmoved) position IS
-        // already in check, so the same reverted-board re-check still (correctly, if
-        // accidentally) reports unsafe. See GameTurnAndStateTest.checkmateInTheCornerIsDetected.
+        // check. gameState's escape search used to re-check the CURRENT position's check
+        // status for every candidate move instead of the attempted move's - doMove already
+        // reverts unsafe moves to the unchanged board while still returning Success (see
+        // GameCheckSafetyTest), so "was this move safe" needs to ask "did the board actually
+        // change", not "is the (unchanged) board currently in check". Fixed by checking
+        // newBoard.game != this instead.
         val board = customBoard("a8" to "BK4", "c7" to "WK4", "b6" to "WQ3")
         val game = customGame(board, PieceColor.Black)
 
         assertFalse(game.kingIsInCheck(PieceColor.Black))
-        assertEquals(GameState.IDLE, game.gameState)
+        assertEquals(GameState.STALEMATE, game.gameState)
+        assertEquals("Draw - Stalemate", game.displayGameState)
     }
 
     @Test
-    @Ignore(
-        "engine bug: doMove reverts unsafe moves to the unchanged board but still returns Success, so " +
-            "gameState's escape search re-checks the current (not-in-check) position instead of the attempted " +
-            "one - see documentsBug_stalemateIsReportedAsIdleInstead",
-    )
-    fun spec_stalemateIsDetectedWhenNotInCheckButNoLegalMoves() {
-        val board = customBoard("a8" to "BK4", "c7" to "WK4", "b6" to "WQ3")
+    fun documentsBehavior_gameStateMissesAnEscapeThatOnlyExistsViaPromotion() {
+        // Same stalemate position as above, plus a black pawn one step from promoting on an
+        // unrelated file. The king still has no safe move, but Black is NOT actually
+        // stalemated: h2-h1=Q is a fully legal, safe move. gameState still says STALEMATE.
+        //
+        // Why: gameState's escape search only counts candidates where
+        // `doMove(...) is MoveResult.Success` (Game.kt) - a promotion returns
+        // MoveResult.Promotion instead, so it's silently excluded from the search regardless
+        // of whether it's a real escape. This is pre-existing and separate from the
+        // newBoard.game != this fix above; recorded here rather than fixed, since gameState
+        // would need to know how to look inside a MoveResult.Promotion (and pick some
+        // representative piece type, since the actual choice is a player decision) to close
+        // this gap properly.
+        val board = customBoard("a8" to "BK4", "c7" to "WK4", "b6" to "WQ3", "h2" to "BP0")
         val game = customGame(board, PieceColor.Black)
 
+        assertFalse(game.kingIsInCheck(PieceColor.Black))
+        assertTrue(game.doMove(sq("h2"), sq("h1")) is MoveResult.Promotion)
+
+        // Correct chess: Black has a legal move (the promotion), so this is GameState.IDLE.
+        // Current engine output: STALEMATE, because the only escape isn't a Success.
         assertEquals(GameState.STALEMATE, game.gameState)
-        assertEquals("Draw - Stalemate", game.displayGameState)
     }
 
     @Test

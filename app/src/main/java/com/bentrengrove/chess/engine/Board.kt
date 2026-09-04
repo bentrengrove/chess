@@ -2,6 +2,7 @@ package com.bentrengrove.chess.engine
 
 import androidx.annotation.DrawableRes
 import com.bentrengrove.chess.R
+import kotlin.math.abs
 
 sealed class PieceType(
     val value: Int,
@@ -121,8 +122,35 @@ data class Board(
 
         fun fromHistory(history: List<Move>): Board {
             var board = Board()
-            history.forEach {
-                board = board.movePiece(it.from, it.to)
+            history.forEach { move ->
+                val piece = board.pieceAt(move.from)
+                val delta = move.to - move.from
+                board =
+                    when {
+                        // Castling: the recorded move is only the king's two-square hop: the
+                        // rook has to jump alongside it, mirroring Game.move()'s special-case.
+                        piece?.type == PieceType.King && abs(delta.x) > 1 -> {
+                            val kingSide = delta.x > 0
+                            val rookFrom = Position(if (kingSide) 7 else 0, move.to.y)
+                            val rookTo = Position(if (kingSide) 5 else 3, move.to.y)
+                            board.movePiece(rookFrom, rookTo).movePiece(move.from, move.to)
+                        }
+
+                        // En passant: a pawn moving diagonally onto an empty square can only
+                        // be an en passant capture (a normal diagonal pawn move always lands
+                        // on an occupied square) - the captured pawn sits beside the
+                        // destination, on the mover's starting rank.
+                        piece?.type == PieceType.Pawn && delta.x != 0 && board.pieceAt(move.to) == null -> {
+                            board.removePiece(Position(move.to.x, move.from.y)).movePiece(move.from, move.to)
+                        }
+
+                        else -> {
+                            board.movePiece(move.from, move.to)
+                        }
+                    }
+                if (move.promotion != null) {
+                    board = board.promotePiece(move.to, move.promotion)
+                }
             }
 
             return board

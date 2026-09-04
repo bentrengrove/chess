@@ -5,6 +5,7 @@ import kotlin.math.abs
 data class Move(
     val from: Position,
     val to: Position,
+    val promotion: PieceType? = null,
 ) {
     fun contains(position: Position): Boolean = from == position || to == position
 }
@@ -38,7 +39,12 @@ data class Game(
             val canMove =
                 allMovesFor(color).find {
                     val newBoard = doMove(it.from, it.to)
-                    (newBoard is MoveResult.Success) && !newBoard.game.kingIsInCheck(color)
+                    // doMove already refuses to make a move that leaves the mover's own king
+                    // in check by returning Success(oldGame) - the board unchanged. Checking
+                    // newBoard.game != this is what tells an actually-applied move apart from
+                    // one that was silently reverted; kingIsInCheck(color) on newBoard.game
+                    // would just re-grade the current position for every reverted move.
+                    (newBoard is MoveResult.Success) && newBoard.game != this
                 } != null
             if (kingIsInCheck(color)) {
                 return if (canMove) GameState.CHECK else GameState.CHECKMATE
@@ -233,7 +239,16 @@ data class Game(
     fun promotePieceAt(
         position: Position,
         to: PieceType,
-    ): Game = Game(board.promotePiece(position, to), this.history)
+    ): Game {
+        // Record the promotion choice on the move that produced it, not just the board -
+        // Board.fromHistory needs it to replay promotion; the plain from/to pair alone is
+        // ambiguous about what the pawn became.
+        val updatedHistory =
+            history.lastOrNull()?.let { lastMove ->
+                history.dropLast(1) + lastMove.copy(promotion = to)
+            } ?: history
+        return Game(board.promotePiece(position, to), updatedHistory)
+    }
 
     fun pieceHasMoved(at: Position): Boolean = history.find { it.from == at } != null
 
@@ -244,7 +259,7 @@ data class Game(
         return board.allPieces.find { (from, piece) ->
             if (piece.color != by) return@find false
             if (piece.type == PieceType.Pawn) return@find pawnCanTake(from, position - from)
-            return canMove(from, position)
+            return@find canMove(from, position)
         } != null
     }
 
@@ -270,7 +285,7 @@ data class Game(
                     .map {
                         positionIsThreatened(
                             Position(it, kingsRow),
-                            by = this.turn.other(),
+                            by = piece.color.other(),
                         )
                     }.find { it == true } ==
                     null
