@@ -155,6 +155,13 @@ data class Board(
                 (0 until 8).map { x -> Position(x, y) }
             }
 
+        /**
+         * Only valid for a game that started from the standard position - this always replays
+         * from `Board()`, so it reconstructs the wrong board for a game loaded via
+         * [Game.fromFen] with a non-standard starting placement. [Game.fromPgn] loading a
+         * `[FEN]` tag hits this too, since `Game.history` alone can't recover an arbitrary
+         * starting board.
+         */
         fun fromHistory(history: List<Move>): Board {
             var board = Board()
             history.forEach { move ->

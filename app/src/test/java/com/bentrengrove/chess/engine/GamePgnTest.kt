@@ -81,6 +81,16 @@ class GamePgnTest {
         Game.fromPgn("[FEN \"4k3/8/8/8/8/1N3N2/8/4K3 w - - 0 1\"]\n\n1. Nd4")
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun fromPgnRejectsCastlingThatIsNotActuallyLegal() {
+        // Unlike every other SAN shape, O-O/O-O-O used to skip the canMove/isLegalMove guard
+        // and hand bogus coordinates straight to doMove (which does no validation of its own).
+        // Castling rights are still "KQ" here - it's the king having moved and returned to e1
+        // that makes castling illegal, so only the pieceHasMoved history check (not the rights
+        // gate) can catch this.
+        Game.fromPgn("[FEN \"4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1\"]\n\n1. Ke2 Kd7 2. Ke1 Kd8 3. O-O")
+    }
+
     @Test
     fun fromPgnIgnoresCommentsAndSidelineVariations() {
         val annotated = Game.fromPgn("1. e4 {best by test} e5 (1...c5 2. Nf3 d6) 2. Nf3 Nc6")

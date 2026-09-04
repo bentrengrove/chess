@@ -391,7 +391,7 @@ data class Game(
             history.lastOrNull()?.let { lastMove ->
                 history.dropLast(1) + lastMove.copy(promotion = to)
             } ?: history
-        return Game(board.promotePiece(position, to), updatedHistory)
+        return copy(board = board.promotePiece(position, to), history = updatedHistory)
     }
 
     fun pieceHasMoved(at: Position): Boolean = history.find { it.from == at } != null
@@ -554,10 +554,16 @@ private fun Game.applySanMove(san: String): Game {
     val kingsRow = if (turn == PieceColor.Black) 0 else 7
 
     if (token == "O-O" || token == "0-0") {
-        return applySanResult(doMove(Position(4, kingsRow), Position(6, kingsRow)), null)
+        val from = Position(4, kingsRow)
+        val to = Position(6, kingsRow)
+        require(canMove(from, to) && isLegalMove(from, to)) { "'$san' is not a legal move for $turn" }
+        return applySanResult(doMove(from, to), null)
     }
     if (token == "O-O-O" || token == "0-0-0") {
-        return applySanResult(doMove(Position(4, kingsRow), Position(2, kingsRow)), null)
+        val from = Position(4, kingsRow)
+        val to = Position(2, kingsRow)
+        require(canMove(from, to) && isLegalMove(from, to)) { "'$san' is not a legal move for $turn" }
+        return applySanResult(doMove(from, to), null)
     }
 
     var rest = token

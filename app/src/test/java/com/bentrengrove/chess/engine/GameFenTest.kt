@@ -109,6 +109,27 @@ class GameFenTest {
     }
 
     @Test
+    fun promotionPreservesTheStartingFenMetadataInsteadOfResettingIt() {
+        // promotePieceAt used to build its result with the two-arg Game(board, history)
+        // constructor, silently dropping every field added after history (starting turn,
+        // castling rights, en passant target, halfmove clock, fullmove number) back to their
+        // defaults - undetectable by only checking the promoted square, so this checks the
+        // survivors instead.
+        // The h1 rook is unmoved and the path/threat checks would otherwise pass, so this only
+        // stays blocked if the loaded "-" castling rights (no castling at all) really survive.
+        val game = Game.fromFen("4k3/7P/8/8/8/8/8/4K2R w - - 5 20")
+        val promotion = game.doMove(sq("h7"), sq("h8")) as MoveResult.Promotion
+        val result = (promotion.onPieceSelection(PieceType.Queen) as MoveResult.Success).game
+
+        assertEquals(20, result.fullmoveNumber)
+        // A pawn move - promotion included - always resets the clock, regardless of the 5
+        // it started from; the fullmoveNumber assertion above is what actually pins the
+        // "did the starting metadata survive" behavior down.
+        assertEquals(0, result.halfmoveClock)
+        assertFalse(result.castlingPermitted(sq("e1"), sq("g1")))
+    }
+
+    @Test
     fun fenRoundTripsAfterAFewMovesFromTheStandardStart() {
         var game = Game()
         game = (game.doMove(sq("e2"), sq("e4")) as MoveResult.Success).game
