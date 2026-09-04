@@ -22,6 +22,33 @@ class PositionTest {
     }
 
     @Test
+    fun fromAlgebraicConvertsCornersCorrectly() {
+        assertEquals(Position(0, 0), Position.fromAlgebraic("a8"))
+        assertEquals(Position(7, 0), Position.fromAlgebraic("h8"))
+        assertEquals(Position(0, 7), Position.fromAlgebraic("a1"))
+        assertEquals(Position(7, 7), Position.fromAlgebraic("h1"))
+        assertEquals(Position(4, 6), Position.fromAlgebraic("e2"))
+    }
+
+    @Test
+    fun fromAlgebraicRoundTripsWithToAlgebraic() {
+        val squares = listOf("a8", "h8", "a1", "h1", "e4", "d5", "c7")
+        squares.forEach { algebraic ->
+            assertEquals(algebraic, Position.fromAlgebraic(algebraic).toAlgebraic())
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun fromAlgebraicRejectsAnOutOfRangeSquare() {
+        Position.fromAlgebraic("i9")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun fromAlgebraicRejectsTheWrongLength() {
+        Position.fromAlgebraic("e10")
+    }
+
+    @Test
     fun positionMinusPositionProducesDelta() {
         assertEquals(Delta(3, -2), Position(5, 1) - Position(2, 3))
     }

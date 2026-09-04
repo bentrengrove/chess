@@ -17,6 +17,18 @@ enum class GameState {
     STALEMATE,
 }
 
+data class CastlingRights(
+    val whiteKingSide: Boolean = true,
+    val whiteQueenSide: Boolean = true,
+    val blackKingSide: Boolean = true,
+    val blackQueenSide: Boolean = true,
+) {
+    companion object {
+        val ALL = CastlingRights()
+        val NONE = CastlingRights(false, false, false, false)
+    }
+}
+
 sealed class MoveResult {
     data class Success(
         val game: Game,
@@ -32,7 +44,80 @@ sealed class MoveResult {
 data class Game(
     val board: Board = Board(),
     val history: List<Move> = listOf(),
+    // The following three describe the position this game *started* from - they only matter
+    // when history is empty (a game loaded mid-position from FEN) or, for castling rights,
+    // as the ceiling that history-derived pieceHasMoved checks can further restrict. A game
+    // built the normal way (Game() or replaying moves) keeps the all-defaults values below,
+    // which reproduce the old, always-standard-start behavior exactly.
+    val startingTurn: PieceColor = PieceColor.White,
+    val startingCastlingRights: CastlingRights = CastlingRights.ALL,
+    val startingEnPassantTarget: Position? = null,
+    val halfmoveClock: Int = 0,
+    val fullmoveNumber: Int = 1,
 ) {
+    companion object {
+        /** Parses a full FEN string ("piece-placement active-color castling ep half full"). */
+        fun fromFen(fen: String): Game {
+            val fields = fen.trim().split(Regex("\\s+"))
+            require(fields.size >= 4) { "FEN '$fen' needs at least 4 fields, got ${fields.size}" }
+
+            val board = Board.fromFen(fields[0])
+            val turn =
+                when (fields[1]) {
+                    "w" -> PieceColor.White
+                    "b" -> PieceColor.Black
+                    else -> throw IllegalArgumentException("'${fields[1]}' is not a valid FEN active color")
+                }
+            val castlingField = fields[2]
+            val castlingRights =
+                if (castlingField == "-") {
+                    CastlingRights.NONE
+                } else {
+                    CastlingRights(
+                        whiteKingSide = castlingField.contains('K'),
+                        whiteQueenSide = castlingField.contains('Q'),
+                        blackKingSide = castlingField.contains('k'),
+                        blackQueenSide = castlingField.contains('q'),
+                    )
+                }
+            val enPassantTarget = if (fields[3] == "-") null else Position.fromAlgebraic(fields[3])
+            val halfmoveClock = fields.getOrNull(4)?.toIntOrNull() ?: 0
+            val fullmoveNumber = fields.getOrNull(5)?.toIntOrNull() ?: 1
+
+            return Game(
+                board = board,
+                history = emptyList(),
+                startingTurn = turn,
+                startingCastlingRights = castlingRights,
+                startingEnPassantTarget = enPassantTarget,
+                halfmoveClock = halfmoveClock,
+                fullmoveNumber = fullmoveNumber,
+            )
+        }
+
+        /**
+         * Replays a PGN movetext (optionally preceded by "[Tag \"value\"]" tag pairs) from the
+         * standard starting position, or from a "[FEN \"...\"]" tag's position when present.
+         * Move numbers, comments in {}, variations in (), NAGs ($1), and a trailing result token
+         * are all ignored - only the main line's SAN moves are applied.
+         */
+        fun fromPgn(pgn: String): Game {
+            val tags = Regex("\\[(\\w+)\\s+\"([^\"]*)\"]").findAll(pgn).associate { it.groupValues[1] to it.groupValues[2] }
+            var movetext = Regex("\\[(\\w+)\\s+\"([^\"]*)\"]").replace(pgn, "")
+            movetext = stripPgnCommentsAndVariations(movetext)
+            movetext = movetext.replace(Regex("\\$\\d+"), " ")
+            movetext = movetext.replace(Regex("\\d+\\.+"), " ")
+
+            var game = tags["FEN"]?.let { fromFen(it) } ?: Game()
+            movetext
+                .split(Regex("\\s+"))
+                .filter { it.isNotBlank() && it !in PGN_RESULT_TOKENS }
+                .forEach { san -> game = game.applySanMove(san) }
+
+            return game
+        }
+    }
+
     val gameState: GameState
         get() {
             val color = turn
@@ -64,7 +149,54 @@ data class Game(
         }
 
     val turn: PieceColor
-        get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: PieceColor.White
+        get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: startingTurn
+
+    /** The en passant target square a FEN export of the current position would report. */
+    val currentEnPassantTarget: Position?
+        get() {
+            val lastMove = history.lastOrNull() ?: return startingEnPassantTarget
+            val piece = board.pieceAt(lastMove.to) ?: return null
+            if (piece.type != PieceType.Pawn) return null
+            if (abs(lastMove.to.y - lastMove.from.y) != 2) return null
+            return Position(lastMove.from.x, (lastMove.from.y + lastMove.to.y) / 2)
+        }
+
+    /** Which castles are still available, combining the starting rights with moves made since. */
+    val currentCastlingRights: CastlingRights
+        get() {
+            fun stillAvailable(
+                kingSquare: Position,
+                rookSquare: Position,
+                color: PieceColor,
+            ): Boolean {
+                if (pieceHasMoved(kingSquare)) return false
+                if (pieceHasMoved(rookSquare)) return false
+                val rook = board.pieceAt(rookSquare)
+                return rook != null && rook.type == PieceType.Rook && rook.color == color
+            }
+            return CastlingRights(
+                whiteKingSide = startingCastlingRights.whiteKingSide && stillAvailable(Position(4, 7), Position(7, 7), PieceColor.White),
+                whiteQueenSide = startingCastlingRights.whiteQueenSide && stillAvailable(Position(4, 7), Position(0, 7), PieceColor.White),
+                blackKingSide = startingCastlingRights.blackKingSide && stillAvailable(Position(4, 0), Position(7, 0), PieceColor.Black),
+                blackQueenSide = startingCastlingRights.blackQueenSide && stillAvailable(Position(4, 0), Position(0, 0), PieceColor.Black),
+            )
+        }
+
+    /** This position's full FEN string. */
+    val fen: String
+        get() {
+            val activeColor = if (turn == PieceColor.White) "w" else "b"
+            val rights = currentCastlingRights
+            val castling =
+                buildString {
+                    if (rights.whiteKingSide) append('K')
+                    if (rights.whiteQueenSide) append('Q')
+                    if (rights.blackKingSide) append('k')
+                    if (rights.blackQueenSide) append('q')
+                }.ifEmpty { "-" }
+            val enPassant = currentEnPassantTarget?.toAlgebraic() ?: "-"
+            return "${board.fen} $activeColor $castling $enPassant $halfmoveClock $fullmoveNumber"
+        }
 
     fun allMovesFor(position: Position): Sequence<Move> =
         board.allPositions
@@ -195,18 +327,30 @@ data class Game(
         from: Position,
         to: Position,
     ): Game {
+        val movingPiece = board.pieceAt(from)
+        val isPawnMove = movingPiece?.type == PieceType.Pawn
+        val isCapture = board.pieceAt(to) != null || (isPawnMove && enPassantTakePermitted(from, to))
+
         val intermediateBoard =
-            if (board.pieceAt(from)?.type == PieceType.King && abs(to.x - from.x) > 1) {
+            if (movingPiece?.type == PieceType.King && abs(to.x - from.x) > 1) {
                 val kingSide = (to.x == 6)
                 val rookPosition = Position(if (kingSide) 7 else 0, to.y)
                 val rookDestination = Position(if (kingSide) 5 else 3, to.y)
                 board.movePiece(rookPosition, rookDestination)
-            } else if (board.pieceAt(from)?.type == PieceType.Pawn && enPassantTakePermitted(from, to)) {
+            } else if (isPawnMove && enPassantTakePermitted(from, to)) {
                 board.removePiece(Position(to.x, to.y - (to.y - from.y)))
             } else {
                 board
             }
-        return Game(board = intermediateBoard.movePiece(from, to), history = history + listOf(Move(from, to)))
+        return Game(
+            board = intermediateBoard.movePiece(from, to),
+            history = history + listOf(Move(from, to)),
+            startingTurn = startingTurn,
+            startingCastlingRights = startingCastlingRights,
+            startingEnPassantTarget = startingEnPassantTarget,
+            halfmoveClock = if (isPawnMove || isCapture) 0 else halfmoveClock + 1,
+            fullmoveNumber = if (turn == PieceColor.Black) fullmoveNumber + 1 else fullmoveNumber,
+        )
     }
 
     fun movesForPieceAt(position: Position?): List<Position> {
@@ -272,12 +416,16 @@ data class Game(
         val kingsRow = if (piece.color == PieceColor.Black) 0 else 7
         if (!(from.y == kingsRow && to.y == kingsRow && from.x == 4 && listOf(2, 6).contains(to.x))) return false
 
-        val kingPosition = Position(4, kingsRow)
-        if (pieceHasMoved(kingPosition)) return false
-
         val isKingSide = to.x == 6
-        val rookPosition = Position(if (isKingSide) 7 else 0, kingsRow)
-        if (pieceHasMoved(rookPosition)) return false
+        val rights = currentCastlingRights
+        val allowedByRights =
+            when {
+                piece.color == PieceColor.White && isKingSide -> rights.whiteKingSide
+                piece.color == PieceColor.White && !isKingSide -> rights.whiteQueenSide
+                piece.color == PieceColor.Black && isKingSide -> rights.blackKingSide
+                else -> rights.blackQueenSide
+            }
+        if (!allowedByRights) return false
 
         return ((if (isKingSide) 5..6 else 1..3).map { board.pieceAt(Position(it, kingsRow)) }.find { it != null } == null) &&
             (
@@ -299,7 +447,12 @@ data class Game(
         board.pieceAt(from) ?: return false
         if (!pawnCanTake(from, to - from)) return false
 
-        val lastMove = history.lastOrNull() ?: return false
+        val lastMove =
+            history.lastOrNull() ?: run {
+                // No move has been played in this Game yet - e.g. it was just loaded from a FEN
+                // whose en passant target square records the same fact history normally would.
+                return startingEnPassantTarget == to
+            }
         if (lastMove.to.x != to.x) return false
 
         val lastPiece = board.pieceAt(lastMove.to) ?: return false
@@ -368,3 +521,98 @@ private fun Board.piecesExist(
     }
     return false
 }
+
+private val PGN_RESULT_TOKENS = setOf("1-0", "0-1", "1/2-1/2", "*")
+
+/** Strips `{comments}` and `(variations)`, tracking nesting depth for both bracket kinds together. */
+private fun stripPgnCommentsAndVariations(input: String): String {
+    val sb = StringBuilder()
+    var depth = 0
+    for (c in input) {
+        when (c) {
+            '{', '(' -> depth++
+            '}', ')' -> if (depth > 0) depth--
+            else -> if (depth == 0) sb.append(c)
+        }
+    }
+    return sb.toString()
+}
+
+private fun pieceTypeFromSanChar(c: Char): PieceType =
+    when (c) {
+        'K' -> PieceType.King
+        'Q' -> PieceType.Queen
+        'R' -> PieceType.Rook
+        'B' -> PieceType.Bishop
+        'N' -> PieceType.Knight
+        else -> throw IllegalArgumentException("'$c' is not a valid SAN piece letter")
+    }
+
+/** Applies one SAN token (e.g. "Nbd7", "exd8=Q+", "O-O") to this game, resolving disambiguation. */
+private fun Game.applySanMove(san: String): Game {
+    val token = san.trim().trimEnd('+', '#', '!', '?')
+    val kingsRow = if (turn == PieceColor.Black) 0 else 7
+
+    if (token == "O-O" || token == "0-0") {
+        return applySanResult(doMove(Position(4, kingsRow), Position(6, kingsRow)), null)
+    }
+    if (token == "O-O-O" || token == "0-0-0") {
+        return applySanResult(doMove(Position(4, kingsRow), Position(2, kingsRow)), null)
+    }
+
+    var rest = token
+    var promotion: PieceType? = null
+    val equalsIndex = rest.indexOf('=')
+    if (equalsIndex >= 0) {
+        promotion = pieceTypeFromSanChar(rest[equalsIndex + 1])
+        rest = rest.substring(0, equalsIndex)
+    }
+
+    val pieceType = if (rest[0] in "KQRBN") pieceTypeFromSanChar(rest[0]) else PieceType.Pawn
+    val body = (if (pieceType == PieceType.Pawn) rest else rest.substring(1)).replace("x", "")
+    require(body.length >= 2) { "'$san' is not a recognizable SAN move" }
+    val destination = Position.fromAlgebraic(body.takeLast(2))
+    val disambiguation = body.dropLast(2)
+
+    var fromFile: Int? = null
+    var fromRank: Int? = null
+    disambiguation.forEach { c ->
+        when (c) {
+            in 'a'..'h' -> fromFile = c - 'a'
+            in '1'..'8' -> fromRank = 7 - (c - '1')
+        }
+    }
+
+    val candidates =
+        board.allPieces.filter { (position, piece) ->
+            piece.color == turn &&
+                piece.type == pieceType &&
+                (fromFile == null || position.x == fromFile) &&
+                (fromRank == null || position.y == fromRank) &&
+                canMove(position, destination) &&
+                isLegalMove(position, destination)
+        }
+    require(candidates.size == 1) {
+        "'$san' matched ${candidates.size} legal moves for $turn, expected exactly 1"
+    }
+
+    return applySanResult(doMove(candidates.first().first, destination), promotion)
+}
+
+/** True if moving from->to doesn't leave the mover's own king in check (mirrors gameState's check). */
+private fun Game.isLegalMove(
+    from: Position,
+    to: Position,
+): Boolean {
+    val result = doMove(from, to)
+    return (result is MoveResult.Success && result.game != this) || result is MoveResult.Promotion
+}
+
+private fun Game.applySanResult(
+    result: MoveResult,
+    promotion: PieceType?,
+): Game =
+    when (result) {
+        is MoveResult.Success -> result.game
+        is MoveResult.Promotion -> (result.onPieceSelection(promotion ?: PieceType.Queen) as MoveResult.Success).game
+    }

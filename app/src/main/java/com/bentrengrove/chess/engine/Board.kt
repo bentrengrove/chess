@@ -96,6 +96,41 @@ data class Position(
     operator fun plus(other: Delta): Position = Position(this.x + other.x, this.y + other.y)
 
     fun toAlgebraic(): String = "${'a' + x}${8 - y}"
+
+    companion object {
+        /** Parses a FEN/SAN algebraic square ("e4") into engine [Position] coordinates. */
+        fun fromAlgebraic(square: String): Position {
+            require(square.length == 2) { "'$square' is not a valid algebraic square" }
+            val file = square[0] - 'a'
+            val rank = square[1] - '1'
+            require(file in 0..7 && rank in 0..7) { "'$square' is not a valid algebraic square" }
+            return Position(file, 7 - rank)
+        }
+    }
+}
+
+private fun pieceTypeFromFenChar(c: Char): PieceType =
+    when (c.uppercaseChar()) {
+        'P' -> PieceType.Pawn
+        'N' -> PieceType.Knight
+        'B' -> PieceType.Bishop
+        'R' -> PieceType.Rook
+        'Q' -> PieceType.Queen
+        'K' -> PieceType.King
+        else -> throw IllegalArgumentException("'$c' is not a valid FEN piece character")
+    }
+
+private fun pieceToFenChar(piece: Piece): Char {
+    val letter =
+        when (piece.type) {
+            PieceType.Pawn -> 'P'
+            PieceType.Knight -> 'N'
+            PieceType.Bishop -> 'B'
+            PieceType.Rook -> 'R'
+            PieceType.Queen -> 'Q'
+            PieceType.King -> 'K'
+        }
+    return if (piece.color == PieceColor.White) letter else letter.lowercaseChar()
 }
 
 private val INITIAL_BOARD =
@@ -155,7 +190,57 @@ data class Board(
 
             return board
         }
+
+        /** Parses the piece-placement field of a FEN string (ranks 8-1, separated by "/"). */
+        fun fromFen(placement: String): Board {
+            val ranks = placement.split("/")
+            require(ranks.size == 8) { "FEN piece placement '$placement' must have 8 ranks" }
+
+            val grid =
+                ranks.map { rank ->
+                    val squares = mutableListOf<Piece?>()
+                    var file = 0
+                    rank.forEach { c ->
+                        if (c.isDigit()) {
+                            repeat(c.digitToInt()) {
+                                squares.add(null)
+                                file++
+                            }
+                        } else {
+                            val color = if (c.isUpperCase()) PieceColor.White else PieceColor.Black
+                            val type = pieceTypeFromFenChar(c)
+                            val colorChar = if (color == PieceColor.White) "W" else "B"
+                            squares.add(Piece("$colorChar${c.uppercaseChar()}$file", type, color))
+                            file++
+                        }
+                    }
+                    require(squares.size == 8) { "FEN rank '$rank' does not describe 8 squares" }
+                    squares.toList()
+                }
+            return Board(grid)
+        }
     }
+
+    /** The piece-placement field of this board's FEN representation (ranks 8-1). */
+    val fen: String
+        get() =
+            pieces.joinToString("/") { rank ->
+                val sb = StringBuilder()
+                var emptyRun = 0
+                rank.forEach { piece ->
+                    if (piece == null) {
+                        emptyRun++
+                    } else {
+                        if (emptyRun > 0) {
+                            sb.append(emptyRun)
+                            emptyRun = 0
+                        }
+                        sb.append(pieceToFenChar(piece))
+                    }
+                }
+                if (emptyRun > 0) sb.append(emptyRun)
+                sb.toString()
+            }
 
     val allPositions = ALL_POSITIONS
     val allPieces: List<Pair<Position, Piece>> =
