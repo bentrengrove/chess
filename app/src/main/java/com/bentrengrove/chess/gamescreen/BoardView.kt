@@ -13,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,15 +21,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.movableContentOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.bentrengrove.chess.engine.Board
 import com.bentrengrove.chess.engine.Game
@@ -185,36 +185,30 @@ private fun BoardLayout(
     pieces: List<Pair<Position, Piece>>,
     modifier: Modifier = Modifier,
 ) {
-    val pieceComposables = remember { mutableMapOf<String, @Composable () -> Unit>() }
     LookaheadScope {
-        Column(modifier) {
-            val pieceModifier =
-                Modifier
-                    .animateBounds(this@LookaheadScope, boundsTransform = boundsTransform)
-                    .weight(1f)
-                    .aspectRatio(1f)
-
-            for (y in 0 until 8) {
-                Row {
-                    for (x in 0 until 8) {
-                        val position = Position(x, y)
-                        val piece = pieces.find { it.first == position }?.second
-
-                        if (piece != null) {
-                            val pieceComposable =
-                                pieceComposables.getOrPut(piece.id) {
-                                    movableContentOf {
-                                        PieceView(
-                                            piece = piece,
-                                            modifier = pieceModifier,
-                                        )
-                                    }
-                                }
-                            pieceComposable()
-                        } else {
-                            Spacer(pieceModifier)
-                        }
+        Layout(
+            modifier = modifier,
+            content = {
+                for ((_, piece) in pieces) {
+                    key(piece.id) {
+                        PieceView(
+                            piece = piece,
+                            modifier = Modifier.animateBounds(this@LookaheadScope, boundsTransform = boundsTransform),
+                        )
                     }
+                }
+            },
+        ) { measurables, constraints ->
+            val squareSize = constraints.maxWidth / 8
+            val squareConstraints = Constraints.fixed(squareSize, squareSize)
+            val placeables = measurables.map { it.measure(squareConstraints) }
+            layout(constraints.maxWidth, constraints.maxWidth) {
+                placeables.forEachIndexed { index, placeable ->
+                    val (position, _) = pieces[index]
+                    placeable.placeRelative(
+                        x = position.x * squareSize,
+                        y = position.y * squareSize,
+                    )
                 }
             }
         }
