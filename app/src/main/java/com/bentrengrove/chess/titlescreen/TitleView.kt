@@ -15,14 +15,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.bentrengrove.chess.Screen
 import com.bentrengrove.chess.gamescreen.GameViewModel
 import com.bentrengrove.chess.ui.ChessTheme
 
 @Composable
 fun TitleView(
-    navController: NavController,
+    backStack: NavBackStack<NavKey>,
     gameViewModel: GameViewModel,
 ) {
     Column(
@@ -32,12 +33,12 @@ fun TitleView(
         Text(text = "Chess", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimary)
         Spacer(modifier = Modifier.height(32.dp))
         GameButton(
-            onClick = { newGame(navController, gameViewModel, aiEnabled = false) },
+            onClick = { newGame(backStack, gameViewModel, aiEnabled = false) },
             text = "Two Players",
         )
         Spacer(modifier = Modifier.height(16.dp))
         GameButton(
-            onClick = { newGame(navController, gameViewModel, aiEnabled = true) },
+            onClick = { newGame(backStack, gameViewModel, aiEnabled = true) },
             text = "vs Computer",
         )
     }
@@ -65,10 +66,10 @@ private fun GameButtonPreview() {
 }
 
 private fun newGame(
-    navController: NavController,
+    backStack: NavBackStack<NavKey>,
     gameViewModel: GameViewModel,
     aiEnabled: Boolean,
 ) {
     gameViewModel.newGame(aiEnabled)
-    navController.navigate(Screen.Game.route)
+    backStack.add(Screen.Game)
 }
