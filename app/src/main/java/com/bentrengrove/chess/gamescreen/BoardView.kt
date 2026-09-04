@@ -41,39 +41,59 @@ import com.bentrengrove.chess.engine.Position
 import com.bentrengrove.chess.ui.BoardColors
 
 @Composable
-fun GameView(modifier: Modifier = Modifier, game: Game, selection: Position?, moves: List<Position>, didTap: (Position) -> Unit) {
+fun GameView(
+    modifier: Modifier = Modifier,
+    game: Game,
+    selection: Position?,
+    moves: List<Position>,
+    didTap: (Position) -> Unit,
+) {
     Box(modifier) {
         val board = game.board
 
         // Highlight king in check, could potentially highlight other things here
-        val dangerPositions = listOf(PieceColor.White, PieceColor.Black).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
+        val dangerPositions =
+            listOf(
+                PieceColor.White,
+                PieceColor.Black,
+            ).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
 
         BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap)
         BoardLayout(
             pieces = board.allPieces,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.0f),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.0f),
         )
         MovesView(board, moves)
     }
 }
 
 @Composable
-private fun MovesView(board: Board, moves: List<Position>) {
+private fun MovesView(
+    board: Board,
+    moves: List<Position>,
+) {
     Column {
         for (y in 0 until 8) {
             Row {
                 for (x in 0 until 8) {
                     val position = Position(x, y)
                     Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1.0f),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .aspectRatio(1.0f),
                     ) {
                         val piece = board.pieceAt(position)
                         val selected = moves.contains(position)
-                        androidx.compose.animation.AnimatedVisibility(visible = selected, modifier = Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = selected,
+                            modifier = Modifier.matchParentSize(),
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
                             val color = if (piece != null) BoardColors.attackColor else BoardColors.moveColor
                             Box(
                                 Modifier
@@ -90,34 +110,51 @@ private fun MovesView(board: Board, moves: List<Position>) {
 }
 
 @Composable
-fun BoardBackground(lastMove: Move?, selection: Position?, dangerPositions: List<Position>, didTap: (Position) -> Unit) {
+fun BoardBackground(
+    lastMove: Move?,
+    selection: Position?,
+    dangerPositions: List<Position>,
+    didTap: (Position) -> Unit,
+) {
     Column {
         for (y in 0 until 8) {
             Row {
                 for (x in 0 until 8) {
                     val position = Position(x, y)
                     val white = y % 2 == x % 2
-                    val color = if (lastMove?.contains(position) == true || position == selection) {
-                        BoardColors.lastMoveColor
-                    } else if (dangerPositions.contains(position)) {
-                        BoardColors.checkColor
-                    } else {
-                        if (white) BoardColors.lightSquare else BoardColors.darkSquare
-                    }
+                    val color =
+                        if (lastMove?.contains(position) == true || position == selection) {
+                            BoardColors.lastMoveColor
+                        } else if (dangerPositions.contains(position)) {
+                            BoardColors.checkColor
+                        } else {
+                            if (white) BoardColors.lightSquare else BoardColors.darkSquare
+                        }
                     Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(color)
-                            .aspectRatio(1.0f)
-                            .clickable(
-                                onClick = { didTap(position) },
-                            ),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .background(color)
+                                .aspectRatio(1.0f)
+                                .clickable(
+                                    onClick = { didTap(position) },
+                                ),
                     ) {
                         if (y == 7) {
-                            Text(text = "${'a' + x}", modifier = Modifier.align(Alignment.BottomEnd), style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(0.5f))
+                            Text(
+                                text = "${'a' + x}",
+                                modifier = Modifier.align(Alignment.BottomEnd),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Black.copy(0.5f),
+                            )
                         }
                         if (x == 0) {
-                            Text(text = "${8 - y}", modifier = Modifier.align(Alignment.TopStart), style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(0.5f))
+                            Text(
+                                text = "${8 - y}",
+                                modifier = Modifier.align(Alignment.TopStart),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Black.copy(0.5f),
+                            )
                         }
                     }
                 }
@@ -127,7 +164,10 @@ fun BoardBackground(lastMove: Move?, selection: Position?, dangerPositions: List
 }
 
 @Composable
-fun PieceView(piece: Piece, modifier: Modifier = Modifier) {
+fun PieceView(
+    piece: Piece,
+    modifier: Modifier = Modifier,
+) {
     Image(painterResource(id = piece.imageResource()), modifier = modifier.padding(4.dp), contentDescription = piece.id)
 }
 
@@ -148,10 +188,11 @@ private fun BoardLayout(
     val pieceComposables = remember { mutableMapOf<String, @Composable () -> Unit>() }
     LookaheadScope {
         Column(modifier) {
-            val pieceModifier = Modifier
-                .animateBounds(this@LookaheadScope, boundsTransform = boundsTransform)
-                .weight(1f)
-                .aspectRatio(1f)
+            val pieceModifier =
+                Modifier
+                    .animateBounds(this@LookaheadScope, boundsTransform = boundsTransform)
+                    .weight(1f)
+                    .aspectRatio(1f)
 
             for (y in 0 until 8) {
                 Row {
@@ -160,14 +201,15 @@ private fun BoardLayout(
                         val piece = pieces.find { it.first == position }?.second
 
                         if (piece != null) {
-                            val pieceComposable = pieceComposables.getOrPut(piece.id) {
-                                movableContentOf {
-                                    PieceView(
-                                        piece = piece,
-                                        modifier = pieceModifier,
-                                    )
+                            val pieceComposable =
+                                pieceComposables.getOrPut(piece.id) {
+                                    movableContentOf {
+                                        PieceView(
+                                            piece = piece,
+                                            modifier = pieceModifier,
+                                        )
+                                    }
                                 }
-                            }
                             pieceComposable()
                         } else {
                             Spacer(pieceModifier)

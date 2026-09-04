@@ -13,12 +13,16 @@ import com.bentrengrove.chess.engine.Piece
 private val CAPTURED_PIECE_SIZE = 32.dp
 
 @Composable
-fun CapturedView(pieces: List<Piece>, modifier: Modifier = Modifier) {
+fun CapturedView(
+    pieces: List<Piece>,
+    modifier: Modifier = Modifier,
+) {
     Row(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface)
-            .height(CAPTURED_PIECE_SIZE)
-            .then(modifier),
+        modifier =
+            Modifier
+                .background(MaterialTheme.colorScheme.surface)
+                .height(CAPTURED_PIECE_SIZE)
+                .then(modifier),
     ) {
         pieces.forEach {
             PieceView(piece = it, modifier = Modifier.width(CAPTURED_PIECE_SIZE).height(CAPTURED_PIECE_SIZE))

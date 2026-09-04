@@ -2,29 +2,42 @@ package com.bentrengrove.chess.engine
 
 import kotlin.math.abs
 
-data class Move(val from: Position, val to: Position) {
-    fun contains(position: Position): Boolean {
-        return from == position || to == position
-    }
+data class Move(
+    val from: Position,
+    val to: Position,
+) {
+    fun contains(position: Position): Boolean = from == position || to == position
 }
 
 enum class GameState {
-    IDLE, CHECK, CHECKMATE, STALEMATE
+    IDLE,
+    CHECK,
+    CHECKMATE,
+    STALEMATE,
 }
 
 sealed class MoveResult {
-    data class Success(val game: Game) : MoveResult()
-    data class Promotion(val onPieceSelection: (PieceType) -> MoveResult) : MoveResult()
+    data class Success(
+        val game: Game,
+    ) : MoveResult()
+
+    data class Promotion(
+        val onPieceSelection: (PieceType) -> MoveResult,
+    ) : MoveResult()
 }
 
-data class Game(val board: Board = Board(), val history: List<Move> = listOf()) {
+data class Game(
+    val board: Board = Board(),
+    val history: List<Move> = listOf(),
+) {
     val gameState: GameState
         get() {
             val color = turn
-            val canMove = allMovesFor(color).find {
-                val newBoard = doMove(it.from, it.to)
-                (newBoard is MoveResult.Success) && !newBoard.game.kingIsInCheck(color)
-            } != null
+            val canMove =
+                allMovesFor(color).find {
+                    val newBoard = doMove(it.from, it.to)
+                    (newBoard is MoveResult.Success) && !newBoard.game.kingIsInCheck(color)
+                } != null
             if (kingIsInCheck(color)) {
                 return if (canMove) GameState.CHECK else GameState.CHECKMATE
             }
@@ -45,36 +58,34 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
     val turn: PieceColor
         get() = history.lastOrNull()?.let { board.pieceAt(it.to)?.color?.other() } ?: PieceColor.White
 
-    fun allMovesFor(position: Position): Sequence<Move> {
-        return board.allPositions.asSequence()
+    fun allMovesFor(position: Position): Sequence<Move> =
+        board.allPositions
+            .asSequence()
             .map { Move(position, it) }
             .filter { canMove(it.from, it.to) }
-    }
 
-    fun allMovesFor(color: PieceColor): Sequence<Move> {
-        return board.allPieces.asSequence().mapNotNull { (position, piece) ->
-            if (piece.color == color) position else null
-        }.flatMap { allMovesFor(it) }
-    }
+    fun allMovesFor(color: PieceColor): Sequence<Move> =
+        board.allPieces
+            .asSequence()
+            .mapNotNull { (position, piece) ->
+                if (piece.color == color) position else null
+            }.flatMap { allMovesFor(it) }
 
-    fun pieceIsThreatenedAt(position: Position): Boolean {
-        return board.allPositions.find { canMove(from = it, to = position) } != null
-    }
+    fun pieceIsThreatenedAt(position: Position): Boolean = board.allPositions.find { canMove(from = it, to = position) } != null
 
-    fun kingPosition(color: PieceColor): Position? {
-        return board.firstPosition { it.type is PieceType.King && it.color == color }
-    }
+    fun kingPosition(color: PieceColor): Position? = board.firstPosition { it.type is PieceType.King && it.color == color }
 
     fun kingIsInCheck(color: PieceColor): Boolean {
         val kingPosition = kingPosition(color) ?: return false
         return pieceIsThreatenedAt(kingPosition)
     }
 
-    fun canSelect(position: Position): Boolean {
-        return board.pieceAt(position)?.color == turn
-    }
+    fun canSelect(position: Position): Boolean = board.pieceAt(position)?.color == turn
 
-    fun canMove(from: Position, to: Position): Boolean {
+    fun canMove(
+        from: Position,
+        to: Position,
+    ): Boolean {
         val piece = board.pieceAt(from) ?: return false
 
         val delta = to - from
@@ -105,6 +116,7 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                             delta.y == -1
                         }
                     }
+
                     is PieceColor.Black -> {
                         if (from.y == 1) {
                             listOf(1, 2).contains(delta.y) &&
@@ -115,19 +127,24 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
                     }
                 }
             }
+
             is PieceType.Rook -> {
                 return (delta.x == 0 || delta.y == 0) && !board.piecesExist(from, to)
             }
+
             is PieceType.Bishop -> {
                 return abs(delta.x) == abs(delta.y) && !board.piecesExist(from, to)
             }
+
             is PieceType.Queen -> {
                 return (delta.x == 0 || delta.y == 0 || abs(delta.x) == abs(delta.y)) && !board.piecesExist(from, to)
             }
+
             is PieceType.King -> {
                 if (abs(delta.x) <= 1 && abs(delta.y) <= 1) return true
                 return castlingPermitted(from, to)
             }
+
             is PieceType.Knight -> {
                 return listOf(
                     Delta(x = 1, y = 2),
@@ -143,7 +160,10 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         }
     }
 
-    fun doMove(from: Position, to: Position): MoveResult {
+    fun doMove(
+        from: Position,
+        to: Position,
+    ): MoveResult {
         val oldGame = this.copy()
         val newGame = move(from, to)
         val wasInCheck = newGame.kingIsInCheck(oldGame.turn)
@@ -163,17 +183,21 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         return MoveResult.Success(newGame)
     }
 
-    private fun move(from: Position, to: Position): Game {
-        val intermediateBoard = if (board.pieceAt(from)?.type == PieceType.King && abs(to.x - from.x) > 1) {
-            val kingSide = (to.x == 6)
-            val rookPosition = Position(if (kingSide) 7 else 0, to.y)
-            val rookDestination = Position(if (kingSide) 5 else 3, to.y)
-            board.movePiece(rookPosition, rookDestination)
-        } else if (board.pieceAt(from)?.type == PieceType.Pawn && enPassantTakePermitted(from, to)) {
-            board.removePiece(Position(to.x, to.y - (to.y - from.y)))
-        } else {
-            board
-        }
+    private fun move(
+        from: Position,
+        to: Position,
+    ): Game {
+        val intermediateBoard =
+            if (board.pieceAt(from)?.type == PieceType.King && abs(to.x - from.x) > 1) {
+                val kingSide = (to.x == 6)
+                val rookPosition = Position(if (kingSide) 7 else 0, to.y)
+                val rookDestination = Position(if (kingSide) 5 else 3, to.y)
+                board.movePiece(rookPosition, rookDestination)
+            } else if (board.pieceAt(from)?.type == PieceType.Pawn && enPassantTakePermitted(from, to)) {
+                board.removePiece(Position(to.x, to.y - (to.y - from.y)))
+            } else {
+                board
+            }
         return Game(board = intermediateBoard.movePiece(from, to), history = history + listOf(Move(from, to)))
     }
 
@@ -182,7 +206,10 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         return board.allPositions.filter { canMove(position, it) }
     }
 
-    fun pawnCanTake(from: Position, withDelta: Delta): Boolean {
+    fun pawnCanTake(
+        from: Position,
+        withDelta: Delta,
+    ): Boolean {
         val pawn = board.pieceAt(from) ?: return false
         if (abs(withDelta.x) != 1 || pawn.type != PieceType.Pawn) {
             return false
@@ -201,15 +228,17 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         return (pawn.color == PieceColor.White && position.y == 0) || (pawn.color == PieceColor.Black && position.y == 7)
     }
 
-    fun promotePieceAt(position: Position, to: PieceType): Game {
-        return Game(board.promotePiece(position, to), this.history)
-    }
+    fun promotePieceAt(
+        position: Position,
+        to: PieceType,
+    ): Game = Game(board.promotePiece(position, to), this.history)
 
-    fun pieceHasMoved(at: Position): Boolean {
-        return history.find { it.from == at } != null
-    }
+    fun pieceHasMoved(at: Position): Boolean = history.find { it.from == at } != null
 
-    fun positionIsThreatened(position: Position, by: PieceColor): Boolean {
+    fun positionIsThreatened(
+        position: Position,
+        by: PieceColor,
+    ): Boolean {
         return board.allPieces.find { (from, piece) ->
             if (piece.color != by) return@find false
             if (piece.type == PieceType.Pawn) return@find pawnCanTake(from, position - from)
@@ -217,7 +246,10 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         } != null
     }
 
-    fun castlingPermitted(from: Position, to: Position): Boolean {
+    fun castlingPermitted(
+        from: Position,
+        to: Position,
+    ): Boolean {
         val piece = board.pieceAt(from) ?: return false
         if (piece.type != PieceType.King) return false
         val kingsRow = if (piece.color == PieceColor.Black) 0 else 7
@@ -231,10 +263,22 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
         if (pieceHasMoved(rookPosition)) return false
 
         return ((if (isKingSide) 5..6 else 1..3).map { board.pieceAt(Position(it, kingsRow)) }.find { it != null } == null) &&
-            ((if (isKingSide) 4..6 else 2..4).map { positionIsThreatened(Position(it, kingsRow), by = this.turn.other()) }.find { it == true } == null)
+            (
+                (if (isKingSide) 4..6 else 2..4)
+                    .map {
+                        positionIsThreatened(
+                            Position(it, kingsRow),
+                            by = this.turn.other(),
+                        )
+                    }.find { it == true } ==
+                    null
+            )
     }
 
-    fun enPassantTakePermitted(from: Position, to: Position): Boolean {
+    fun enPassantTakePermitted(
+        from: Position,
+        to: Position,
+    ): Boolean {
         board.pieceAt(from) ?: return false
         if (!pawnCanTake(from, to - from)) return false
 
@@ -248,29 +292,55 @@ data class Game(val board: Board = Board(), val history: List<Move> = listOf()) 
             is PieceColor.White -> {
                 lastMove.from.y == to.y + 1 && lastMove.to.y == to.y - 1
             }
+
             is PieceColor.Black -> {
                 lastMove.from.y == to.y - 1 && lastMove.to.y == to.y + 1
             }
         }
     }
 
-    fun valueFor(color: PieceColor): Int {
-        return board.allPieces.filter { it.second.color == color }.map { it.second.type.value }.sum()
-    }
+    fun valueFor(color: PieceColor): Int =
+        board.allPieces
+            .filter { it.second.color == color }
+            .map { it.second.type.value }
+            .sum()
 
     fun capturedPiecesFor(color: PieceColor): List<Piece> {
         val startingPieces = STARTING_PIECES.filter { it.color == color }.map { it.id }.toSet()
-        val currentPieces = board.allPieces.map { it.second }.filter { it.color == color }.map { it.id }.toSet()
+        val currentPieces =
+            board.allPieces
+                .map { it.second }
+                .filter { it.color == color }
+                .map { it.id }
+                .toSet()
         val capturedPieces = startingPieces - currentPieces
         return capturedPieces.map { Piece.pieceFromString(it) }
     }
 }
 
-private fun Board.piecesExist(between: Position, and: Position): Boolean {
-    val step = Delta(
-        x = if (between.x > and.x) -1 else if (between.x < and.x) 1 else 0,
-        y = if (between.y > and.y) -1 else if (between.y < and.y) 1 else 0,
-    )
+private fun Board.piecesExist(
+    between: Position,
+    and: Position,
+): Boolean {
+    val step =
+        Delta(
+            x =
+                if (between.x > and.x) {
+                    -1
+                } else if (between.x < and.x) {
+                    1
+                } else {
+                    0
+                },
+            y =
+                if (between.y > and.y) {
+                    -1
+                } else if (between.y < and.y) {
+                    1
+                } else {
+                    0
+                },
+        )
     var position = between
     position += step
     while (position != and) {

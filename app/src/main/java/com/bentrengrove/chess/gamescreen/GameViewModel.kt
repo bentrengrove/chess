@@ -21,10 +21,11 @@ class GameViewModel : ViewModel() {
 
     private var forwardHistory = MutableStateFlow<List<Move>>(listOf())
 
-    val canGoBack = moveResult.map {
-        val game = (_moveResult.value as? MoveResult.Success)?.game ?: return@map false
-        return@map game.history.isNotEmpty()
-    }
+    val canGoBack =
+        moveResult.map {
+            val game = (_moveResult.value as? MoveResult.Success)?.game ?: return@map false
+            return@map game.history.isNotEmpty()
+        }
     val canGoForward = forwardHistory.map { it.isNotEmpty() }
 
     private val ai = AI(PieceColor.Black)
@@ -41,10 +42,11 @@ class GameViewModel : ViewModel() {
                 val nextMove = ai.calculateNextMove(game, PieceColor.Black)
                 if (nextMove != null) {
                     val aiResult = game.doMove(nextMove.from, nextMove.to)
-                    val finalAiResult = when (aiResult) {
-                        is MoveResult.Success -> aiResult
-                        is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
-                    }
+                    val finalAiResult =
+                        when (aiResult) {
+                            is MoveResult.Success -> aiResult
+                            is MoveResult.Promotion -> aiResult.onPieceSelection(PieceType.Queen)
+                        }
                     updateResult(finalAiResult)
                 }
             }

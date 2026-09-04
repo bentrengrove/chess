@@ -107,9 +107,10 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                 Text(
                     text = game.displayGameState,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .align(Alignment.CenterHorizontally),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 8.dp)
+                            .align(Alignment.CenterHorizontally),
                 )
             }
         }

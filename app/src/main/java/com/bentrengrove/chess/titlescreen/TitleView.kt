@@ -21,7 +21,10 @@ import com.bentrengrove.chess.gamescreen.GameViewModel
 import com.bentrengrove.chess.ui.ChessTheme
 
 @Composable
-fun TitleView(navController: NavController, gameViewModel: GameViewModel) {
+fun TitleView(
+    navController: NavController,
+    gameViewModel: GameViewModel,
+) {
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -41,7 +44,10 @@ fun TitleView(navController: NavController, gameViewModel: GameViewModel) {
 }
 
 @Composable
-private fun GameButton(onClick: () -> Unit, text: String) {
+private fun GameButton(
+    onClick: () -> Unit,
+    text: String,
+) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),

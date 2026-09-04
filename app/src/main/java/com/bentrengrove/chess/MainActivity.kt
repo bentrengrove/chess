@@ -53,9 +53,10 @@ fun Content() {
             val currentDestination = navBackStackEntry?.destination
             val canPop = navController.previousBackStackEntry != null
 
-            val screen = currentDestination?.route?.let { route ->
-                Screen.allMap[route]
-            }
+            val screen =
+                currentDestination?.route?.let { route ->
+                    Screen.allMap[route]
+                }
 
             val titleText = screen?.title ?: ""
             val actions = screen?.actions ?: {}
@@ -71,12 +72,13 @@ fun Content() {
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors().copy(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors().copy(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                 actions = actions,
             )
             NavHost(
@@ -100,6 +102,7 @@ sealed class Screen(
     val actions: @Composable RowScope.() -> Unit,
 ) {
     data object Title : Screen("title", "", actions = {})
+
     data object Game : Screen("game", "", actions = { GameActions() })
 
     companion object {

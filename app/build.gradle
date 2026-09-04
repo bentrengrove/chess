@@ -1,17 +1,16 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 android {
-    namespace "com.bentrengrove.chess"
-    compileSdk 35
+    namespace = "com.bentrengrove.chess"
+    compileSdk 37
 
     defaultConfig {
         applicationId "com.bentrengrove.chess"
         minSdkVersion 28
-        targetSdkVersion 35
+        targetSdkVersion 37
         versionCode 1
         versionName "1.0"
 
@@ -26,25 +25,25 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_21
-        targetCompatibility JavaVersion.VERSION_21
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     buildFeatures {
-        compose true
+        compose = true
     }
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom-alpha:2024.10.00"))
+    implementation(platform("androidx.compose:compose-bom:2026.08.00"))
 
-    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.core:core-ktx:1.19.0'
     implementation "androidx.compose.ui:ui"
     implementation "androidx.compose.material3:material3"
-    implementation "androidx.compose.material:material-icons-core:1.7.4"
+    implementation "androidx.compose.material:material-icons-core:1.7.8"
     implementation "androidx.compose.ui:ui-tooling"
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
-    implementation "androidx.navigation:navigation-compose:2.8.3"
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.11.0'
+    implementation "androidx.navigation:navigation-compose:2.10.0"
     implementation "androidx.activity:activity-compose"
 
     testImplementation 'junit:junit:4.+'
