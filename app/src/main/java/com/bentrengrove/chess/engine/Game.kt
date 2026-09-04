@@ -22,6 +22,8 @@ sealed class MoveResult {
     ) : MoveResult()
 
     data class Promotion(
+        val color: PieceColor,
+        val game: Game,
         val onPieceSelection: (PieceType) -> MoveResult,
     ) : MoveResult()
 }
@@ -175,7 +177,7 @@ data class Game(
         val wasPromoted = newGame.canPromotePieceAt(to)
 
         if (wasPromoted) {
-            return MoveResult.Promotion { promoteTo ->
+            return MoveResult.Promotion(oldGame.turn, newGame) { promoteTo ->
                 MoveResult.Success(newGame.promotePieceAt(to, promoteTo))
             }
         }
