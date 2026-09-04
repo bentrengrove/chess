@@ -91,19 +91,14 @@ fun GameView(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxHeight()) {
-            with(sharedTransitionScope) {
-                GameView(
-                    modifier =
-                        Modifier.sharedElement(
-                            sharedContentState = rememberSharedContentState(key = CHESS_BOARD_SHARED_ELEMENT_KEY),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                        ),
-                    game = game,
-                    selection = selection,
-                    moves = game.movesForPieceAt(selection),
-                    didTap = onSelect,
-                )
-            }
+            GameView(
+                game = game,
+                selection = selection,
+                moves = game.movesForPieceAt(selection),
+                didTap = onSelect,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
             Column(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
