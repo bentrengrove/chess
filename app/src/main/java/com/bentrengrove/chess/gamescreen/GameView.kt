@@ -89,23 +89,17 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                 moves = game.movesForPieceAt(selection),
                 didTap = onSelect,
             )
-            CapturedView(
-                pieces = game.capturedPiecesFor(PieceColor.White),
-                Modifier.fillMaxWidth(),
-            )
-            CapturedView(
-                pieces = game.capturedPiecesFor(PieceColor.Black),
-                Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = game.displayGameState,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier =
-                    Modifier
-                        .padding(horizontal = 8.dp)
-                        .align(Alignment.CenterHorizontally),
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GameStatusBanner(game = game)
+                CapturedPiecesPanel(game = game)
+                MoveHistoryList(
+                    history = game.history,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         if (pendingPromotion != null) {

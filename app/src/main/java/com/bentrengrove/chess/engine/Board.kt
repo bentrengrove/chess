@@ -93,6 +93,8 @@ data class Position(
     operator fun minus(other: Position): Delta = Delta(this.x - other.x, this.y - other.y)
 
     operator fun plus(other: Delta): Position = Position(this.x + other.x, this.y + other.y)
+
+    fun toAlgebraic(): String = "${'a' + x}${8 - y}"
 }
 
 private val INITIAL_BOARD =

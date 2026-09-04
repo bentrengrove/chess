@@ -1,16 +1,16 @@
 package com.bentrengrove.chess.gamescreen
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.bentrengrove.chess.engine.Piece
 
-private val CAPTURED_PIECE_SIZE = 32.dp
+private val CAPTURED_PIECE_SIZE = 24.dp
 
 @Composable
 fun CapturedView(
@@ -20,8 +20,8 @@ fun CapturedView(
     Row(
         modifier =
             Modifier
-                .background(MaterialTheme.colorScheme.surface)
                 .height(CAPTURED_PIECE_SIZE)
+                .horizontalScroll(rememberScrollState())
                 .then(modifier),
     ) {
         pieces.forEach {
