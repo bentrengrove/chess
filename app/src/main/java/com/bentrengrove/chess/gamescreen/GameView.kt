@@ -1,6 +1,9 @@
 package com.bentrengrove.chess.gamescreen
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,8 +60,13 @@ fun GameActions(viewModel: GameViewModel = viewModel()) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun GameView(viewModel: GameViewModel = viewModel()) {
+fun GameView(
+    viewModel: GameViewModel = viewModel(),
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+) {
     var selection: Position? by remember { mutableStateOf(null) }
 
     val moveResult by viewModel.moveResult.collectAsState(initial = MoveResult.Success(Game()))
@@ -88,6 +96,8 @@ fun GameView(viewModel: GameViewModel = viewModel()) {
                 selection = selection,
                 moves = game.movesForPieceAt(selection),
                 didTap = onSelect,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
             )
             Column(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),

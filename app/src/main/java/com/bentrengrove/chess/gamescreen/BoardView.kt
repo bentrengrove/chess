@@ -1,6 +1,8 @@
 package com.bentrengrove.chess.gamescreen
 
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateBounds
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
@@ -40,6 +42,7 @@ import com.bentrengrove.chess.engine.PieceColor
 import com.bentrengrove.chess.engine.Position
 import com.bentrengrove.chess.ui.BoardColors
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun GameView(
     modifier: Modifier = Modifier,
@@ -47,6 +50,8 @@ fun GameView(
     selection: Position?,
     moves: List<Position>,
     didTap: (Position) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     Box(modifier) {
         val board = game.board
@@ -61,6 +66,8 @@ fun GameView(
         BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap)
         BoardLayout(
             pieces = board.allPieces,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -183,6 +190,8 @@ val boundsTransform = { _: Rect, _: Rect ->
 @Composable
 private fun BoardLayout(
     pieces: List<Pair<Position, Piece>>,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
     modifier: Modifier = Modifier,
 ) {
     LookaheadScope {
@@ -191,9 +200,21 @@ private fun BoardLayout(
             content = {
                 for ((_, piece) in pieces) {
                     key(piece.id) {
+                        val boundsModifier = Modifier.animateBounds(this@LookaheadScope, boundsTransform = boundsTransform)
+                        val pieceModifier =
+                            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                with(sharedTransitionScope) {
+                                    boundsModifier.sharedElement(
+                                        sharedContentState = rememberSharedContentState(key = piece.id),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                    )
+                                }
+                            } else {
+                                boundsModifier
+                            }
                         PieceView(
                             piece = piece,
-                            modifier = Modifier.animateBounds(this@LookaheadScope, boundsTransform = boundsTransform),
+                            modifier = pieceModifier,
                         )
                     }
                 }

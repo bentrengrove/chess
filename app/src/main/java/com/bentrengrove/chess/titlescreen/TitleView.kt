@@ -1,6 +1,11 @@
 package com.bentrengrove.chess.titlescreen
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,31 +20,50 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.bentrengrove.chess.Screen
 import com.bentrengrove.chess.gamescreen.GameViewModel
 import com.bentrengrove.chess.ui.ChessTheme
+import com.bentrengrove.chess.ui.titleScreenBackground
+import com.bentrengrove.chess.ui.titleScreenScrim
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun TitleView(
-    navController: NavController,
+    backStack: NavBackStack<NavKey>,
     gameViewModel: GameViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer).padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = "Chess", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimary)
-        Spacer(modifier = Modifier.height(32.dp))
-        GameButton(
-            onClick = { newGame(navController, gameViewModel, aiEnabled = false) },
-            text = "Two Players",
+    Box(modifier = Modifier.fillMaxSize().background(titleScreenBackground)) {
+        FallingPiecesBackground(
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope,
+            modifier = Modifier.fillMaxSize(),
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        GameButton(
-            onClick = { newGame(navController, gameViewModel, aiEnabled = true) },
-            text = "vs Computer",
-        )
+
+        // A light dim on top of the already-translucent pieces, mostly to guarantee
+        // text/button contrast rather than to hide the pieces a second time.
+        Box(modifier = Modifier.fillMaxSize().background(titleScreenScrim.copy(alpha = 0.2f)))
+
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(text = "Chess", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimary)
+            Spacer(modifier = Modifier.height(40.dp))
+            GameButton(
+                onClick = { newGame(backStack, gameViewModel, aiEnabled = false) },
+                text = "Two Players",
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            GameButton(
+                onClick = { newGame(backStack, gameViewModel, aiEnabled = true) },
+                text = "vs Computer",
+            )
+        }
     }
 }
 
@@ -65,10 +89,10 @@ private fun GameButtonPreview() {
 }
 
 private fun newGame(
-    navController: NavController,
+    backStack: NavBackStack<NavKey>,
     gameViewModel: GameViewModel,
     aiEnabled: Boolean,
 ) {
     gameViewModel.newGame(aiEnabled)
-    navController.navigate(Screen.Game.route)
+    backStack.add(Screen.Game)
 }

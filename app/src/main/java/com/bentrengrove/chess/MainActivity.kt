@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
@@ -18,17 +20,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import androidx.navigation3.ui.NavDisplay
 import com.bentrengrove.chess.gamescreen.GameActions
 import com.bentrengrove.chess.gamescreen.GameView
 import com.bentrengrove.chess.gamescreen.GameViewModel
 import com.bentrengrove.chess.titlescreen.TitleView
 import com.bentrengrove.chess.ui.ChessTheme
+import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,32 +44,27 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun Content() {
     ChessTheme {
-        val navController = rememberNavController()
+        val backStack = rememberNavBackStack(Screen.Title)
         val gameViewModel: GameViewModel = viewModel()
 
         Column {
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentDestination = navBackStackEntry?.destination
-            val canPop = navController.previousBackStackEntry != null
-
-            val screen =
-                currentDestination?.route?.let { route ->
-                    Screen.allMap[route]
+            val canPop = backStack.size > 1
+            val actions: @Composable RowScope.() -> Unit =
+                when (backStack.lastOrNull()) {
+                    is Screen.Game -> ({ GameActions() })
+                    else -> ({})
                 }
 
-            val titleText = screen?.title ?: ""
-            val actions = screen?.actions ?: {}
-
             TopAppBar(
-                title = { Text(titleText) },
+                title = { Text("") },
                 navigationIcon = {
                     if (canPop) {
                         IconButton(onClick = {
-                            navController.popBackStack()
+                            backStack.removeLastOrNull()
                         }) {
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                         }
@@ -81,32 +79,39 @@ fun Content() {
                     ),
                 actions = actions,
             )
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Title.route,
-            ) {
-                composable(Screen.Title.route) { TitleView(navController, gameViewModel) }
-                composable(
-                    Screen.Game.route,
-                ) {
-                    GameView(gameViewModel)
-                }
+            SharedTransitionLayout {
+                NavDisplay(
+                    backStack = backStack,
+                    onBack = { backStack.removeLastOrNull() },
+                    entryProvider =
+                        entryProvider<NavKey> {
+                            entry<Screen.Title> {
+                                TitleView(
+                                    backStack = backStack,
+                                    gameViewModel = gameViewModel,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                                )
+                            }
+                            entry<Screen.Game> {
+                                GameView(
+                                    viewModel = gameViewModel,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                                )
+                            }
+                        },
+                )
             }
         }
     }
 }
 
-sealed class Screen(
-    val route: String,
-    val title: String,
-    val actions: @Composable RowScope.() -> Unit,
-) {
-    data object Title : Screen("title", "", actions = {})
+@Serializable
+sealed class Screen : NavKey {
+    @Serializable
+    data object Title : Screen()
 
-    data object Game : Screen("game", "", actions = { GameActions() })
-
-    companion object {
-        val allList by lazy { listOf(Title, Game) }
-        val allMap by lazy { allList.associateBy { it.route } }
-    }
+    @Serializable
+    data object Game : Screen()
 }
