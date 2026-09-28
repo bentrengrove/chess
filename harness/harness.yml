@@ -11,6 +11,12 @@ bots:
     login: bentrengrove-reviewer[bot]
     id: 334798468
 
+# Model per agent role (passed as --model). Empty = claude-code-action's default.
+models:
+  builder: claude-opus-5-5
+  reviewer: ""
+  gardener: ""
+
 limits:
   # Global cap across Builder + Reviewer jobs. Extra jobs wait in the gate for a free slot.
   max_concurrent_jobs: 2

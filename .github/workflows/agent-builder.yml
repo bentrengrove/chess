@@ -50,6 +50,7 @@ jobs:
       ci_run: ${{ steps.gate.outputs.ci_run }}
       trigger: ${{ steps.gate.outputs.trigger }}
       max_turns: ${{ steps.gate.outputs.max_turns }}
+      model: ${{ steps.gate.outputs.model }}
       timeout: ${{ steps.gate.outputs.timeout }}
     steps:
       - uses: actions/checkout@v7
@@ -227,6 +228,7 @@ jobs:
           include_fix_links: "false"
           prompt: ${{ steps.prompt.outputs.text }}
           claude_args: |
+            --model ${{ needs.gate.outputs.model }}
             --max-turns ${{ needs.gate.outputs.max_turns }}
             --json-schema '${{ steps.prompt.outputs.schema }}'
             --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,TodoWrite"
