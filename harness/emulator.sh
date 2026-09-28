@@ -1,46 +1,49 @@
 #!/usr/bin/env bash
-# Headless emulator lifecycle for agent:device jobs on GitHub-hosted Ubuntu runners.
+# Headless emulator lifecycle for agent:device jobs, driven by the android CLI.
 #
-#   harness/emulator.sh setup      enable KVM, install the system image, create the AVD (idempotent)
-#   harness/emulator.sh snapshot   cold boot once and save a quick-boot snapshot (run on cache miss)
-#   harness/emulator.sh start      boot from the snapshot in the background and wait until ready
+#   harness/emulator.sh setup      KVM + android CLI + create the AVD for the configured profile
+#   harness/emulator.sh snapshot   cold boot once, then stop (saves the quick-boot snapshot)
+#   harness/emulator.sh start      boot headless (from the snapshot) and wait until ready
 #   harness/emulator.sh stop
+#   harness/emulator.sh log [N]    diagnostics: devices + last N logcat lines
 #
-# Cache ~/.android/avd and $ANDROID_HOME/system-images between runs (see agent-builder.yml).
+# The android CLI picks the system image for the profile and blocks until the device is ready.
+# We only add KVM access, a hard timeout, PATH exports for later steps, and diagnostics.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cfg="$root/harness/harness.yml"
-conf() { yq -r ".emulator.$1" "$cfg"; }
-
-API="$(conf api_level)"
-TARGET="$(conf target)"
-ARCH="$(conf arch)"
-DEVICE="$(conf device)"
-AVD="$(conf avd_name)"
-BOOT_TIMEOUT="$(conf boot_timeout_seconds)"
-IMAGE="system-images;android-${API};${TARGET};${ARCH}"
+PROFILE="$(yq -r .emulator.profile "$cfg")"
+BOOT_TIMEOUT="$(yq -r .emulator.boot_timeout_seconds "$cfg")"
 
 : "${ANDROID_HOME:=${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
 export ANDROID_HOME ANDROID_SDK_ROOT="$ANDROID_HOME"
-export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
-LOG="${RUNNER_TEMP:-/tmp}/emulator.log"
+export PATH="$HOME/.local/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+AVD_FILE="${RUNNER_TEMP:-/tmp}/emulator.avd"
 
-emulator_args=(-avd "$AVD" -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-  -camera-back none -camera-front none -memory 4096 -cores 3)
+# Always point the CLI at the runner's SDK so AVDs, images and caches land in known places.
+android() { command android --sdk="$ANDROID_HOME" "$@"; }
 
-wait_for_boot() {
-  local deadline=$((SECONDS + BOOT_TIMEOUT))
-  adb wait-for-device
-  until [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; do
-    if ((SECONDS > deadline)); then
-      echo "Emulator did not boot within ${BOOT_TIMEOUT}s" >&2
-      tail -n 100 "$LOG" >&2 || true
-      exit 1
-    fi
-    sleep 2
-  done
-  echo "Emulator booted in ${SECONDS}s"
+fail() {
+  echo "::error::$1"
+  echo "----- android emulator list -----"
+  android emulator list || true
+  echo "----- adb devices -----"
+  adb devices -l 2>/dev/null || true
+  exit 1
+}
+
+avd() { cat "$AVD_FILE" 2>/dev/null || android emulator list | head -n1; }
+
+boot() { # $@ = extra flags for `android emulator start`
+  local name start=$SECONDS
+  name="$(avd)"
+  [[ -n "$name" ]] || fail "No AVD found; run setup first."
+  echo "Starting $name ($*)"
+  timeout "$BOOT_TIMEOUT" android -v emulator start --headless "$@" "$name" ||
+    fail "android emulator start failed or took longer than ${BOOT_TIMEOUT}s."
+  adb devices | grep -q '^emulator-.*device$' || fail "Emulator started but adb can't see it."
+  echo "Emulator ready in $((SECONDS - start))s"
 }
 
 case "${1:-}" in
@@ -53,33 +56,44 @@ case "${1:-}" in
     else
       echo "::warning::/dev/kvm not present; the emulator will be very slow or fail."
     fi
-    yes | sdkmanager --licenses >/dev/null || true
-    sdkmanager --install "platform-tools" "emulator" "$IMAGE" >/dev/null
-    if ! avdmanager list avd -c | grep -qx "$AVD"; then
-      echo no | avdmanager create avd --force -n "$AVD" -k "$IMAGE" -d "$DEVICE"
+    if ! type -P android >/dev/null; then
+      curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
     fi
+    android --version
+    # Make android/adb available to later steps, including Claude's Bash tool in the Builder.
+    if [[ -n "${GITHUB_PATH:-}" ]]; then
+      printf '%s\n' "$HOME/.local/bin" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >>"$GITHUB_PATH"
+    fi
+    if [[ -z "$(android emulator list)" ]]; then
+      timeout 900 android -v emulator create "$PROFILE" || fail "android emulator create $PROFILE failed."
+    fi
+    android emulator list | head -n1 >"$AVD_FILE"
+    echo "AVD: $(cat "$AVD_FILE") (profile $PROFILE)"
     ;;
   snapshot)
-    emulator "${emulator_args[@]}" -no-snapshot-load >"$LOG" 2>&1 &
-    wait_for_boot
+    boot --cold
     sleep 10
-    adb emu kill # saves the quick-boot snapshot on exit
-    wait || true
-    echo "Saved quick-boot snapshot for $AVD"
+    android emulator stop "$(avd)" || true # a clean stop saves the quick-boot snapshot
+    for _ in $(seq 1 30); do adb devices | grep -q '^emulator-' || break; sleep 2; done
+    echo "Saved quick-boot snapshot for $(avd)"
     ;;
   start)
-    nohup emulator "${emulator_args[@]}" -no-snapshot-save >"$LOG" 2>&1 &
-    wait_for_boot
+    boot
     for s in window_animation_scale transition_animation_scale animator_duration_scale; do
-      adb shell settings put global "$s" 0
+      timeout 10 adb shell settings put global "$s" 0 || true
     done
-    adb shell input keyevent 82 || true # dismiss the lock screen
+    timeout 10 adb shell input keyevent 82 || true # dismiss the lock screen
     ;;
   stop)
-    adb emu kill 2>/dev/null || true
+    timeout 30 android emulator stop "$(avd)" 2>/dev/null || timeout 20 adb emu kill 2>/dev/null || true
+    ;;
+  log)
+    android emulator list || true
+    adb devices -l || true
+    timeout 20 adb logcat -d -t "${2:-200}" 2>/dev/null || true
     ;;
   *)
-    echo "usage: $0 setup|snapshot|start|stop" >&2
+    echo "usage: $0 setup|snapshot|start|stop|log" >&2
     exit 2
     ;;
 esac

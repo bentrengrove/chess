@@ -1,0 +1,71 @@
+name: Harness emulator smoke test
+
+# Boots the agent:device emulator exactly as the Builder does, using this PR's harness/, so
+# emulator changes are proven on a real runner before the Builder depends on them.
+# No secrets are used.
+
+on:
+  pull_request:
+    paths:
+      - harness/emulator.sh
+      - harness/harness.yml
+      - .github/workflows/harness-emulator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-emulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator:
+    name: emulator smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up emulator
+        run: harness/emulator.sh setup
+      - name: Cold boot + snapshot
+        run: harness/emulator.sh snapshot
+      - name: Boot from snapshot
+        run: |
+          start=$SECONDS
+          harness/emulator.sh start
+          echo "### Emulator" >> "$GITHUB_STEP_SUMMARY"
+          echo "Boot from snapshot: $((SECONDS - start))s" >> "$GITHUB_STEP_SUMMARY"
+      - name: Capture proof
+        run: |
+          mkdir -p "$RUNNER_TEMP/proof"
+          adb exec-out screencap -p > "$RUNNER_TEMP/proof/home.png"
+          timeout 20 adb shell screenrecord --time-limit 3 /sdcard/rec.mp4 || true
+          adb pull /sdcard/rec.mp4 "$RUNNER_TEMP/proof/rec.mp4" || true
+          adb shell getprop ro.build.version.sdk
+          ls -la "$RUNNER_TEMP/proof"
+      - name: android CLI checks
+        run: |
+          android --version
+          android init </dev/null
+          android skills list || true
+          ls -la "$HOME/.claude/skills" 2>/dev/null || echo "no ~/.claude/skills"
+          android emulator list
+          android screen capture -o "$RUNNER_TEMP/proof/android-cli.png"
+          android layout | head -c 600 || true
+      - name: Emulator log
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/proof"
+          harness/emulator.sh log 400 > "$RUNNER_TEMP/proof/emulator-log.txt" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: emulator-smoke
+          path: ${{ runner.temp }}/proof/
+          retention-days: 7
+      - name: Stop
+        if: always()
+        run: harness/emulator.sh stop
