@@ -17,3 +17,12 @@ subprojects {
         }
     }
 }
+
+// The single "is this change mergeable?" gate. CI runs exactly this, and agents must run it
+// before opening or updating a PR. Keep it JVM-only (no emulator) so it stays fast.
+tasks.register('preflight') {
+    group = 'verification'
+    description = 'Runs formatting, lint and unit tests. Must pass before a PR is opened.'
+    dependsOn subprojects.collect { "${it.path}:spotlessCheck" }
+    dependsOn ':app:lintDebug', ':app:testDebugUnitTest'
+}
