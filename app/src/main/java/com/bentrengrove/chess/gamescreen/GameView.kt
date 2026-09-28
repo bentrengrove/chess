@@ -131,7 +131,7 @@ private val promotionChoices =
     )
 
 @Composable
-private fun PromotionOverlay(
+internal fun PromotionOverlay(
     color: PieceColor,
     onPieceSelected: (PieceType) -> Unit,
 ) {
