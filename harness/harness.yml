@@ -14,7 +14,7 @@ bots:
 # Model per agent role (passed as --model). Empty = claude-code-action's default.
 models:
   builder: claude-opus-5-5
-  reviewer: ""
+  reviewer: claude-opus-5-5
   gardener: ""
 
 limits:
