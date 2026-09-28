@@ -65,6 +65,12 @@ class ScreenshotTest {
     fun boardStartingPosition_dark() = captureBoard(darkTheme = true)
 
     @Test
+    fun boardMoveMarkers_light() = captureBoardMoveMarkers(darkTheme = false)
+
+    @Test
+    fun boardMoveMarkers_dark() = captureBoardMoveMarkers(darkTheme = true)
+
+    @Test
     fun promotionPicker_light() = capturePromotionPicker(darkTheme = false)
 
     @Test
@@ -99,6 +105,14 @@ class ScreenshotTest {
     private fun captureBoard(darkTheme: Boolean) =
         capture(darkTheme) {
             GameView(game = Game(), selection = null, moves = emptyList(), didTap = {})
+        }
+
+    private fun captureBoardMoveMarkers(darkTheme: Boolean) =
+        capture(darkTheme) {
+            // After 1. e4 d5 the e4 pawn can move to e5 (dot) or capture on d5 (ring).
+            val game = Game.fromPgn("1. e4 d5")
+            val selection = Position(4, 4)
+            GameView(game = game, selection = selection, moves = game.movesForPieceAt(selection), didTap = {})
         }
 
     private fun capturePromotionPicker(darkTheme: Boolean) =
