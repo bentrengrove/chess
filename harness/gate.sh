@@ -16,6 +16,7 @@ status="$here/status.sh"
 
 owner="$(yq -r .owner "$cfg")"
 reviewer_bot="$(yq -r .bots.reviewer.login "$cfg")"
+phrase="$(yq -r .trigger_phrase "$cfg")"
 max_ci="$(yq -r .limits.max_ci_fix_attempts "$cfg")"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/runs/${GITHUB_RUN_ID:-0}"
 
@@ -62,6 +63,11 @@ case "$event" in
     ;;
   *) skip "unsupported event $event" ;;
 esac
+
+# Comment triggers must contain the trigger phrase (the workflow pre-filter checks this too).
+if [[ "$event" == issue_comment || "$event" == pull_request_review_comment ]]; then
+  [[ "$trigger" == *"$phrase"* ]] || skip "comment does not mention $phrase"
+fi
 
 # Owner-only gate (the reviewer bot may also request changes; CI failures are system events).
 case "$event" in
@@ -122,7 +128,7 @@ if [[ "$mode" == "fix-ci" ]]; then
   if ((attempts > max_ci)); then
     "$status" labels "$issue" "agent:stuck" "agent:working"
     "$status" labels "$pr" "agent:stuck" "agent:working"
-    "$status" update "$issue" '{}' "🛑 Stuck: CI still failing on #$pr after $max_ci auto-fix attempts. Comment \`@claude\` to retry."
+    "$status" update "$issue" '{}' "🛑 Stuck: CI still failing on #$pr after $max_ci auto-fix attempts. Comment \`$phrase\` to retry."
     skip "CI auto-fix limit reached for PR #$pr"
   fi
   patch="$(jq -c ". + {ci_fix_attempts: $attempts}" <<<"$patch")"

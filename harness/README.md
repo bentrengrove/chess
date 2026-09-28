@@ -7,14 +7,14 @@ Issue-driven agents for this repo. You write an issue and add a label; a Builder
 | You do | What happens |
 |---|---|
 | File an **Agent task** issue, then add `agent` (or `agent:device` for UI work) | The Builder implements it on `agent/<issue>-<slug>` and opens a PR |
-| The Builder asks questions (`agent:needs-info`) | Answer them in a comment containing `@claude`, or re-add the label |
-| Comment `@claude ...` on the PR (or inline) | The Builder addresses it and pushes |
+| The Builder asks questions (`agent:needs-info`) | Answer them in a comment mentioning `@bentrengrove-builder`, or re-add the label |
+| Comment `@bentrengrove-builder ...` on the PR (or inline) | The Builder addresses it and pushes |
 | Submit a "Request changes" review | The Builder addresses it and pushes |
 | — | CI fails: the Builder auto-fixes, at most `max_ci_fix_attempts` times, then `agent:stuck` |
 | — | CI green: the Reviewer reviews. Up to `max_review_rounds` rounds with the Builder, then `ready-for-human` or `agent:stuck` |
 | `harness/resume.sh <pr>` on your Mac | Worktree + Claude Remote Control session seeded with the PR context |
 
-Only @bentrengrove can trigger agents. Your `@claude` comment also resets the retry and round counters. Each issue has a sticky **Agent status** comment with the current state, a run history, and each run's retro.
+Only @bentrengrove can trigger agents. The trigger phrase is `trigger_phrase` in `harness.yml`. We don't use `@claude` because that's a real GitHub user. Your trigger comment also resets the retry and round counters. Each issue has a sticky **Agent status** comment with the current state, a run history, and each run's retro.
 
 ## Pieces
 

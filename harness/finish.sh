@@ -10,6 +10,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 cfg="$here/harness.yml"
 repo="${GITHUB_REPOSITORY:?}"
 status="$here/status.sh"
+phrase="$(yq -r .trigger_phrase "$cfg")"
 issue="$1" gate_pr="$2" mode="$3" tier="$4" conclusion="$5" result="${6:-}"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/runs/${GITHUB_RUN_ID:-0}"
 run_link="[${GITHUB_RUN_ID:-run}]($run_url)"
@@ -59,13 +60,13 @@ case "$st" in
     ;;
   needs_info)
     "$status" labels "$issue" "agent:needs-info" "agent:working"
-    headline="❓ Needs info: answer the questions above, then comment \`@claude\` (or re-add the label)."
+    headline="❓ Needs info: answer the questions above, then comment \`$phrase\` (or re-add the label)."
     ;;
   *)
     st="stuck"
     "$status" labels "$issue" "agent:stuck" "agent:working"
     [[ -n "$pr" ]] && "$status" labels "$pr" "agent:stuck" "agent:working"
-    headline="🛑 Stuck: ${summary:-see run log}. Comment \`@claude\` to retry."
+    headline="🛑 Stuck: ${summary:-see run log}. Comment \`$phrase\` to retry."
     ;;
 esac
 

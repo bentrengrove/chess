@@ -3,6 +3,11 @@
 
 owner: bentrengrove
 
+# Text the owner puts in a comment to wake the Builder. Deliberately the builder app's name:
+# "@claude" is a real GitHub user and would ping a stranger. The pre-filter in
+# .github/workflows/agent-builder.yml hardcodes this string too; keep them in sync.
+trigger_phrase: "@bentrengrove-builder"
+
 bots:
   builder:
     login: bentrengrove-builder[bot]
