@@ -1,0 +1,52 @@
+name: Agent task
+description: A task for the agent harness. The owner adds the `agent` or `agent:device` label to start it.
+title: "[Agent] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write this the way you'd brief a capable engineer who has never seen the issue before.
+        Agents start work only once the repo owner adds `agent` or `agent:device`.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should change, and why? Keep it to one outcome.
+      placeholder: Let players undo the AI's move and their own in one tap.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist the PR can be verified against. Be concrete and testable.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Needs device?
+      description: Does verifying this need the emulator (UI, animation, interaction)? If yes, label the issue `agent:device`, not `agent`.
+      options:
+        - "No: unit tests / previews are enough (agent)"
+        - "Yes: verify on the emulator with screenshots (agent:device)"
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Things the agent should explicitly not do in this PR.
+      placeholder: Don't change the AI's search depth.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Optional pointers such as relevant files, prior PRs, screenshots, or edge cases.
+    validations:
+      required: false
