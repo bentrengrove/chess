@@ -232,9 +232,16 @@ jobs:
             --model ${{ needs.gate.outputs.model }}
             --max-turns ${{ needs.gate.outputs.max_turns }}
             --json-schema '${{ steps.prompt.outputs.schema }}'
+            # acceptEdits auto-approves edits, mkdir/touch/rm/mv/cp/sed and output redirects, but only
+            # inside the working directories: the checkout, plus the evidence dir added here.
+            --permission-mode acceptEdits
+            --add-dir ${{ runner.temp }}/evidence
             --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,TodoWrite"
             --allowedTools "Bash(./gradlew:*),Bash(git:*),Bash(gh:*),Bash(adb:*),Bash(android:*)"
             --allowedTools "Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(mkdir:*),Bash(sleep:*),Bash(find:*),Bash(grep:*),Bash(wc:*),Bash(diff:*),Bash(jq:*)"
+            --allowedTools "Bash(cp:*),Bash(mv:*),Bash(touch:*),Bash(sed:*),Bash(echo:*),Bash(printf:*),Bash(sort:*),Bash(uniq:*),Bash(xargs:*),Bash(tr:*),Bash(cut:*),Bash(file:*),Bash(unzip:*),Bash(timeout:*)"
+            # Read-only docs and package metadata. No general web access: GitHub content goes through gh.
+            --allowedTools "WebFetch(domain:developer.android.com),WebFetch(domain:dl.google.com),WebFetch(domain:maven.google.com),WebFetch(domain:repo1.maven.org),WebFetch(domain:central.sonatype.com),WebFetch(domain:kotlinlang.org)"
 
       # ---- Post-run (always) -------------------------------------------------------------------
       - id: post-app

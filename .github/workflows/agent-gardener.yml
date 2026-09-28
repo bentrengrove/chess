@@ -99,6 +99,7 @@ jobs:
           claude_args: |
             --max-turns ${{ needs.gate.outputs.max_turns }}
             --json-schema '${{ steps.prompt.outputs.schema }}'
+            --permission-mode acceptEdits
             --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,TodoWrite"
             --allowedTools "Bash(git:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr create:*),Bash(gh api:*)"
       - name: Summary
