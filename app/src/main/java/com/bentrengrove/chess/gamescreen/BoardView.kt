@@ -1,5 +1,6 @@
 package com.bentrengrove.chess.gamescreen
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -9,6 +10,7 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,22 +18,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.bentrengrove.chess.engine.Board
@@ -41,6 +43,7 @@ import com.bentrengrove.chess.engine.Piece
 import com.bentrengrove.chess.engine.PieceColor
 import com.bentrengrove.chess.engine.Position
 import com.bentrengrove.chess.ui.BoardColors
+import com.bentrengrove.chess.ui.ChessTheme
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -64,6 +67,8 @@ fun GameView(
             ).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
 
         BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap)
+        // Markers sit under the pieces so a capture ring never draws over the piece being captured
+        MovesView(board, moves)
         BoardLayout(
             pieces = board.allPieces,
             sharedTransitionScope = sharedTransitionScope,
@@ -73,7 +78,6 @@ fun GameView(
                     .fillMaxWidth()
                     .aspectRatio(1.0f),
         )
-        MovesView(board, moves)
     }
 }
 
@@ -101,13 +105,7 @@ private fun MovesView(
                             enter = fadeIn(),
                             exit = fadeOut(),
                         ) {
-                            val color = if (piece != null) BoardColors.attackColor else BoardColors.moveColor
-                            Box(
-                                Modifier
-                                    .clip(CircleShape)
-                                    .background(color)
-                                    .size(16.dp),
-                            )
+                            MoveMarker(isCapture = piece != null)
                         }
                     }
                 }
@@ -115,6 +113,36 @@ private fun MovesView(
         }
     }
 }
+
+/**
+ * Legal-move marker for a single square: a centred dot for a quiet move, or a ring hugging the
+ * square's edge for a capture so the captured piece stays fully visible. Both scale with the square.
+ */
+@Composable
+private fun MoveMarker(
+    isCapture: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier.fillMaxSize()) {
+        val squareSize = size.minDimension
+        if (isCapture) {
+            val strokeWidth = squareSize * CAPTURE_RING_WIDTH_FRACTION
+            drawCircle(
+                color = BoardColors.attackColor,
+                radius = (squareSize - strokeWidth) / 2,
+                style = Stroke(width = strokeWidth),
+            )
+        } else {
+            drawCircle(
+                color = BoardColors.moveColor,
+                radius = squareSize * MOVE_DOT_DIAMETER_FRACTION / 2,
+            )
+        }
+    }
+}
+
+private const val MOVE_DOT_DIAMETER_FRACTION = 0.3f
+private const val CAPTURE_RING_WIDTH_FRACTION = 0.1f
 
 @Composable
 fun BoardBackground(
@@ -234,4 +262,31 @@ private fun BoardLayout(
             }
         }
     }
+}
+
+/** 1. e4 d5 with the e4 pawn selected: a quiet move to e5 and a capture on d5. */
+@Composable
+private fun MoveMarkersPreviewContent(darkTheme: Boolean) {
+    val game = Game.fromPgn("1. e4 d5")
+    val selection = Position(4, 4)
+    ChessTheme(darkTheme = darkTheme) {
+        GameView(
+            game = game,
+            selection = selection,
+            moves = game.movesForPieceAt(selection),
+            didTap = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MoveMarkersPreview() {
+    MoveMarkersPreviewContent(darkTheme = false)
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MoveMarkersDarkPreview() {
+    MoveMarkersPreviewContent(darkTheme = true)
 }
