@@ -4,7 +4,7 @@
 # Runs in the gate job of agent-builder.yml, on the default branch's copy of the harness.
 #
 # Outputs (GITHUB_OUTPUT): run, mode, issue, pr, branch, tier, ci_run, trigger (multiline),
-#                          max_turns, timeout
+#                          max_turns, model, timeout
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -140,6 +140,7 @@ out branch "$branch"
 out tier "$tier"
 out ci_run "$ci_run"
 out max_turns "$(yq -r .limits.builder_max_turns "$cfg")"
+out model "$(yq -r '.models.builder // ""' "$cfg")"
 out timeout "$(yq -r .limits.job_timeout_minutes "$cfg")"
 {
   echo "trigger<<__TRIGGER_EOF__"

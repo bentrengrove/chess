@@ -29,6 +29,7 @@ jobs:
       issue: ${{ steps.gate.outputs.issue }}
       sha: ${{ steps.gate.outputs.sha }}
       max_turns: ${{ steps.gate.outputs.max_turns }}
+      model: ${{ steps.gate.outputs.model }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -66,6 +67,7 @@ jobs:
           {
             echo "run=true"; echo "pr=$pr"; echo "issue=$issue"; echo "sha=$HEAD_SHA"
             echo "max_turns=$(yq -r .limits.reviewer_max_turns harness/harness.yml)"
+            echo "model=$(yq -r '.models.reviewer // ""' harness/harness.yml)"
           } >> "$GITHUB_OUTPUT"
       - if: steps.gate.outputs.run == 'true'
         env:
@@ -141,6 +143,7 @@ jobs:
           include_fix_links: "false"
           prompt: ${{ steps.prompt.outputs.text }}
           claude_args: |
+            --model ${{ needs.gate.outputs.model }}
             --max-turns ${{ needs.gate.outputs.max_turns }}
             --json-schema '${{ steps.prompt.outputs.schema }}'
             --allowedTools "Read,Glob,Grep,LS,TodoWrite"
