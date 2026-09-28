@@ -140,6 +140,8 @@ jobs:
         if: env.TIER == 'device'
         id: emu
         run: echo "key=avd-$(yq -r '.emulator.profile' "$H/harness.yml")-v3" >> "$GITHUB_OUTPUT"
+      # Restore only. Builder runs (issue/comment/workflow_run events) get a read-only cache, so the
+      # AVD cache is written by harness-emulator.yml on main; key and paths must match it exactly.
       # ANDROID_HOME on ubuntu-latest is /usr/local/lib/android/sdk (the env context cannot see it).
       - name: Restore AVD cache
         if: env.TIER == 'device'
@@ -160,18 +162,6 @@ jobs:
       - name: Create quick-boot snapshot
         if: env.TIER == 'device' && steps.avd-cache.outputs.cache-hit != 'true'
         run: '"$H/emulator.sh" snapshot'
-      - name: Save AVD cache
-        if: env.TIER == 'device' && steps.avd-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          key: ${{ steps.emu.outputs.key }}
-          path: |
-            ~/.android/*.avd
-            ~/.android/*.ini
-            ~/.android/avd/*
-            ~/.android/adb*
-            /usr/local/lib/android/sdk/system-images
-            /usr/local/lib/android/sdk/emulator
       - name: Boot emulator
         if: env.TIER == 'device'
         run: '"$H/emulator.sh" start'
