@@ -3,6 +3,7 @@ plugins {
     id "com.android.application" version "9.4.0" apply false
     id "org.jetbrains.kotlin.plugin.compose" version "2.4.10"
     id "org.jetbrains.kotlin.plugin.serialization" version "2.4.10"
+    id "io.github.takahirom.roborazzi" version "1.75.0" apply false
 }
 
 subprojects {
@@ -22,7 +23,9 @@ subprojects {
 // before opening or updating a PR. Keep it JVM-only (no emulator) so it stays fast.
 tasks.register('preflight') {
     group = 'verification'
-    description = 'Runs formatting, lint and unit tests. Must pass before a PR is opened.'
+    description = 'Runs formatting, lint, unit tests and screenshot tests. Must pass before a PR is opened.'
     dependsOn subprojects.collect { "${it.path}:spotlessCheck" }
-    dependsOn ':app:lintDebug', ':app:testDebugUnitTest'
+    // verifyRoborazziDebug runs testDebugUnitTest in verify mode, so screenshot tests are compared
+    // against the baselines in app/src/test/screenshots/ alongside the regular unit tests.
+    dependsOn ':app:lintDebug', ':app:testDebugUnitTest', ':app:verifyRoborazziDebug'
 }

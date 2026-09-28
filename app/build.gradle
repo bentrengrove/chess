@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.plugin.compose'
     id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'io.github.takahirom.roborazzi'
 }
 
 android {
@@ -33,6 +34,17 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            // Robolectric needs the merged resources to render composables for screenshot tests.
+            includeAndroidResources = true
+        }
+    }
+}
+
+roborazzi {
+    outputDir = file("src/test/screenshots")
 }
 
 dependencies {
@@ -51,6 +63,12 @@ dependencies {
     implementation "androidx.activity:activity-compose"
 
     testImplementation 'junit:junit:4.+'
+    testImplementation "androidx.compose.ui:ui-test-junit4"
+    testImplementation "org.robolectric:robolectric:4.17"
+    testImplementation "io.github.takahirom.roborazzi:roborazzi:1.75.0"
+    testImplementation "io.github.takahirom.roborazzi:roborazzi-compose:1.75.0"
+    testImplementation "io.github.takahirom.roborazzi:roborazzi-junit-rule:1.75.0"
+    debugImplementation "androidx.compose.ui:ui-test-manifest"
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 }
