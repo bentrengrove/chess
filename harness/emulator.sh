@@ -56,7 +56,7 @@ case "${1:-}" in
     else
       echo "::warning::/dev/kvm not present; the emulator will be very slow or fail."
     fi
-    if ! command -v android >/dev/null; then
+    if ! type -P android >/dev/null; then
       curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
     fi
     android --version
