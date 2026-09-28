@@ -37,11 +37,9 @@ limits:
   max_review_rounds: 2
 
 emulator:
-  api_level: 36
-  target: google_apis
-  arch: x86_64
-  device: pixel_7
-  avd_name: agent
+  # android CLI device profile (`android emulator create --list-profiles`). The CLI picks the
+  # system image for the profile.
+  profile: medium_phone
   boot_timeout_seconds: 600
 
 # Paths the Builder must never touch in a feature (non-harness) PR.

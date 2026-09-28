@@ -139,7 +139,7 @@ jobs:
       - name: Emulator config
         if: env.TIER == 'device'
         id: emu
-        run: echo "key=avd-$(yq -r '.emulator | [.api_level, .target, .arch, .device] | join("-")' "$H/harness.yml")-v1" >> "$GITHUB_OUTPUT"
+        run: echo "key=avd-$(yq -r '.emulator.profile' "$H/harness.yml")-v2" >> "$GITHUB_OUTPUT"
       # ANDROID_HOME on ubuntu-latest is /usr/local/lib/android/sdk (the env context cannot see it).
       - name: Restore AVD cache
         if: env.TIER == 'device'
@@ -171,15 +171,10 @@ jobs:
       - name: Boot emulator
         if: env.TIER == 'device'
         run: '"$H/emulator.sh" start'
-      - name: Install android CLI
+      - name: android CLI skills
         if: env.TIER == 'device'
-        continue-on-error: true # adb still works if this fails; the Builder falls back to it
+        continue-on-error: true # adb and the CLI still work without skills
         run: |
-          curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
-          for d in "$HOME/.local/bin" "$HOME/.android/cli/bin" "$HOME/bin"; do
-            [[ -d "$d" ]] && echo "$d" >> "$GITHUB_PATH" && export PATH="$d:$PATH"
-          done
-          android --version
           android init </dev/null
           android skills list || true
           adb devices
