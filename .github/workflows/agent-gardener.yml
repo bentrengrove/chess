@@ -1,0 +1,110 @@
+name: Agent Gardener
+
+# Weekly: reads the past week's agent runs (status comments + retros) and, if something keeps
+# recurring, opens a small `harness:` PR against CLAUDE.md / harness/. Never touches app code.
+
+on:
+  schedule:
+    - cron: "0 23 * * 0" # Monday 09:00 AEST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: agent-gardener
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      items: ${{ steps.collect.outputs.items }}
+      max_turns: ${{ steps.collect.outputs.max_turns }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: harness
+          persist-credentials: false
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+      - id: collect
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          since="$(date -u -d '7 days ago' +%Y-%m-%d)"
+          items="$(gh search issues --repo "$GITHUB_REPOSITORY" --updated ">=$since" --limit 50 \
+            --json number,title,url,isPullRequest,labels \
+            -q '[.[] | select([.labels[].name] | any(. == "agent" or . == "agent:device" or . == "agent:stuck" or . == "ready-for-human"))]
+                | map("- \(if .isPullRequest then "PR" else "Issue" end) #\(.number): \(.title) [\([.labels[].name] | join(", "))]") | join("\n")')"
+          echo "Items:"; echo "${items:-<none>}"
+          {
+            echo "items<<__ITEMS_EOF__"; echo "$items"; echo "__ITEMS_EOF__"
+            echo "max_turns=$(yq -r .limits.gardener_max_turns harness/harness.yml)"
+          } >> "$GITHUB_OUTPUT"
+      - if: steps.collect.outputs.items != ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: harness/slot.sh
+
+  garden:
+    name: "agent: gardener"
+    needs: gate
+    if: needs.gate.outputs.items != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+      - name: Build prompt
+        id: prompt
+        env:
+          ITEMS: ${{ needs.gate.outputs.items }}
+        run: |
+          {
+            echo "text<<__PROMPT_EOF__"
+            cat harness/prompts/gardener.md
+            echo
+            echo "## Task"
+            echo
+            echo "- Repository: $GITHUB_REPOSITORY"
+            echo "- Today: $(date -u +%Y-%m-%d)"
+            echo "- Agent issues and PRs updated in the last 7 days:"
+            echo "$ITEMS"
+            echo "__PROMPT_EOF__"
+            echo "schema=$(jq -c . harness/schemas/gardener.json)"
+          } >> "$GITHUB_OUTPUT"
+      - id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.app.outputs.token }}
+          bot_name: ${{ steps.app.outputs.app-slug }}[bot]
+          bot_id: "334797901"
+          allowed_bots: bentrengrove-builder,bentrengrove-reviewer
+          prompt: ${{ steps.prompt.outputs.text }}
+          claude_args: |
+            --max-turns ${{ needs.gate.outputs.max_turns }}
+            --json-schema '${{ steps.prompt.outputs.schema }}'
+            --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,TodoWrite"
+            --allowedTools "Bash(git:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr create:*),Bash(gh api:*)"
+      - name: Summary
+        if: always()
+        env:
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          jq -r '"### Gardener: \(.status)\n\n\(.summary)" + (if .pr_number then "\n\nPR #\(.pr_number)" else "" end)' \
+            <<<"${RESULT:-null}" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No result." >> "$GITHUB_STEP_SUMMARY"

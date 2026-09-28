@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["status","summary","retro"],"properties":{"status":{"type":"string","enum":["pr_opened","pr_updated","needs_info","stuck"]},"pr_number":{"type":"integer"},"summary":{"type":"string"},"retro":{"type":"string"}}}

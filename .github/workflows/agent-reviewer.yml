@@ -1,0 +1,169 @@
+name: Agent Reviewer
+
+# After CI goes green on an agent PR, a fresh-context, read-only Claude reviews it against
+# CLAUDE.md and the issue's acceptance criteria. harness/review.sh submits the verdict as a
+# formal review from the reviewer app and moves labels (ready-for-human / agent:stuck).
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    name: gate
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      startsWith(github.event.workflow_run.head_branch, 'agent/') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # includes waiting for a free agent slot
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+      pr: ${{ steps.gate.outputs.pr }}
+      issue: ${{ steps.gate.outputs.issue }}
+      sha: ${{ steps.gate.outputs.sha }}
+      max_turns: ${{ steps.gate.outputs.max_turns }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: harness
+          persist-credentials: false
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+      - id: gate
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_FROM_EVENT: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          skip() { echo "Skipping: $1"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          pr="${PR_FROM_EVENT:-$(gh pr list --state open --head "$HEAD_BRANCH" --json number -q '.[0].number // empty')}"
+          [[ -n "$pr" ]] || skip "no open PR for $HEAD_BRANCH"
+          prj="$(gh pr view "$pr" --json state,isDraft,headRefOid,headRefName,isCrossRepository,labels)"
+          [[ "$(jq -r .state <<<"$prj")" == OPEN ]] || skip "PR #$pr not open"
+          [[ "$(jq -r .isDraft <<<"$prj")" == false ]] || skip "PR #$pr is a draft"
+          [[ "$(jq -r .isCrossRepository <<<"$prj")" == false ]] || skip "PR #$pr is from a fork"
+          [[ "$(jq -r .headRefOid <<<"$prj")" == "$HEAD_SHA" ]] || skip "CI result is for an outdated commit"
+          [[ "$(jq -r .headRefName <<<"$prj")" =~ ^agent/([0-9]+)- ]] || skip "not an agent branch"
+          issue="${BASH_REMATCH[1]}"
+          reviewer="$(yq -r .bots.reviewer.login harness/harness.yml)"
+          already="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr/reviews" --paginate \
+            -q "[.[] | select(.user.login == \"$reviewer\" and .commit_id == \"$HEAD_SHA\")] | length")"
+          [[ "$already" == 0 ]] || skip "already reviewed $HEAD_SHA"
+          harness/status.sh labels "$pr" "agent:working" "ready-for-human,agent:stuck"
+          harness/status.sh update "$issue" '{}' "🔎 Reviewer reviewing #$pr: [run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
+          {
+            echo "run=true"; echo "pr=$pr"; echo "issue=$issue"; echo "sha=$HEAD_SHA"
+            echo "max_turns=$(yq -r .limits.reviewer_max_turns harness/harness.yml)"
+          } >> "$GITHUB_OUTPUT"
+      - if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: harness/slot.sh
+
+  review:
+    name: "agent: review #${{ needs.gate.outputs.pr }}"
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: agent-issue-${{ needs.gate.outputs.issue }}
+      cancel-in-progress: false
+    env:
+      PR: ${{ needs.gate.outputs.pr }}
+      ISSUE: ${{ needs.gate.outputs.issue }}
+      SHA: ${{ needs.gate.outputs.sha }}
+    steps:
+      - id: reviewer
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.REVIEWER_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: harness
+          path: .harness-src
+          persist-credentials: false
+      - name: Stage harness
+        run: |
+          mkdir -p "$RUNNER_TEMP/h"
+          mv .harness-src/harness "$RUNNER_TEMP/h/harness"
+          rm -rf .harness-src
+          echo "H=$RUNNER_TEMP/h/harness" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build prompt
+        id: prompt
+        run: |
+          base="$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo origin/main)"
+          {
+            echo "text<<__PROMPT_EOF__"
+            cat "$H/prompts/reviewer.md"
+            echo
+            echo "## Task"
+            echo
+            echo "- Repository: $GITHUB_REPOSITORY"
+            echo "- PR: #$PR at commit \`$SHA\` (checked out)"
+            echo "- Issue: #$ISSUE"
+            echo "- Diff: \`git diff $base...HEAD\` or \`gh pr diff $PR\`"
+            echo "__PROMPT_EOF__"
+            echo "schema=$(jq -c . "$H/schemas/reviewer.json")"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.reviewer.outputs.token }}
+          bot_name: ${{ steps.reviewer.outputs.app-slug }}[bot]
+          bot_id: "334798468"
+          allowed_bots: bentrengrove-builder,bentrengrove-reviewer
+          classify_inline_comments: "false"
+          include_fix_links: "false"
+          prompt: ${{ steps.prompt.outputs.text }}
+          claude_args: |
+            --max-turns ${{ needs.gate.outputs.max_turns }}
+            --json-schema '${{ steps.prompt.outputs.schema }}'
+            --allowedTools "Read,Glob,Grep,LS,TodoWrite"
+            --allowedTools "Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh issue view:*)"
+            --disallowedTools "Edit,MultiEdit,Write,NotebookEdit,WebFetch,WebSearch"
+
+      - id: post-reviewer
+        if: always()
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.REVIEWER_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_KEY }}
+      - id: post-builder
+        if: always()
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+      - name: Submit review
+        if: always()
+        env:
+          REVIEWER_TOKEN: ${{ steps.post-reviewer.outputs.token }}
+          GH_TOKEN: ${{ steps.post-builder.outputs.token }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          CONCLUSION: ${{ steps.claude.outputs.conclusion || steps.claude.outcome }}
+        run: '"$H/review.sh" "$ISSUE" "$PR" "$SHA" "$CONCLUSION" "$RESULT"'
