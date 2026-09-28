@@ -1,0 +1,39 @@
+# Agent harness configuration. Read by the agent-* workflows and harness/*.sh via `yq`.
+# Changing this file is a harness change: propose it in a `harness:` PR.
+
+owner: bentrengrove
+
+bots:
+  builder:
+    login: bentrengrove-builder[bot]
+    id: 334797901
+  reviewer:
+    login: bentrengrove-reviewer[bot]
+    id: 334798468
+
+limits:
+  # Global cap across Builder + Reviewer jobs. Extra jobs wait in the gate for a free slot.
+  max_concurrent_jobs: 2
+  slot_wait_minutes: 45
+  job_timeout_minutes: 60
+  builder_max_turns: 120
+  reviewer_max_turns: 40
+  gardener_max_turns: 60
+  # Auto-fix attempts after a red CI run before the PR is marked agent:stuck.
+  max_ci_fix_attempts: 2
+  # Reviewer "request changes" rounds before the PR goes to ready-for-human or agent:stuck.
+  max_review_rounds: 2
+
+emulator:
+  api_level: 36
+  target: google_apis
+  arch: x86_64
+  device: pixel_7
+  avd_name: agent
+  boot_timeout_seconds: 600
+
+# Paths the Builder must never touch in a feature (non-harness) PR.
+protected_paths:
+  - .github/
+  - harness/
+  - CLAUDE.md

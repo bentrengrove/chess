@@ -1,0 +1,263 @@
+name: Agent Builder
+
+# Turns owner-approved issues into PRs, and iterates on them after @claude comments, change
+# requests (from the owner or the Reviewer) and CI failures. The state machine lives in
+# harness/gate.sh (before) and harness/finish.sh (after); the model only writes code and PRs.
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    name: gate
+    # Cheap pre-filter so unrelated events don't even start a runner. gate.sh re-checks everything.
+    if: >-
+      (github.event_name == 'issues' && github.event.sender.login == github.repository_owner &&
+        (github.event.label.name == 'agent' || github.event.label.name == 'agent:device')) ||
+      (github.event_name == 'issue_comment' && github.event.comment.user.login == github.repository_owner &&
+        contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == github.repository_owner &&
+        contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' &&
+        startsWith(github.event.pull_request.head.ref, 'agent/')) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        startsWith(github.event.workflow_run.head_branch, 'agent/') &&
+        github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # includes waiting for a free agent slot
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+      mode: ${{ steps.gate.outputs.mode }}
+      issue: ${{ steps.gate.outputs.issue }}
+      pr: ${{ steps.gate.outputs.pr }}
+      branch: ${{ steps.gate.outputs.branch }}
+      tier: ${{ steps.gate.outputs.tier }}
+      ci_run: ${{ steps.gate.outputs.ci_run }}
+      trigger: ${{ steps.gate.outputs.trigger }}
+      max_turns: ${{ steps.gate.outputs.max_turns }}
+      timeout: ${{ steps.gate.outputs.timeout }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: harness
+          persist-credentials: false
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+      - id: gate
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: harness/gate.sh
+      - if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: harness/slot.sh
+
+  build:
+    name: "agent: build #${{ needs.gate.outputs.issue }}"
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.gate.outputs.timeout) }}
+    concurrency:
+      group: agent-issue-${{ needs.gate.outputs.issue }}
+      cancel-in-progress: false
+    env:
+      MODE: ${{ needs.gate.outputs.mode }}
+      ISSUE: ${{ needs.gate.outputs.issue }}
+      PR: ${{ needs.gate.outputs.pr }}
+      BRANCH: ${{ needs.gate.outputs.branch }}
+      TIER: ${{ needs.gate.outputs.tier }}
+      CI_RUN: ${{ needs.gate.outputs.ci_run }}
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+
+      # Trusted harness scripts/prompts always come from the default branch, never the PR branch.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: harness
+          path: .harness-src
+          persist-credentials: false
+      - name: Stage harness
+        run: |
+          mkdir -p "$RUNNER_TEMP/h"
+          mv .harness-src/harness "$RUNNER_TEMP/h/harness"
+          rm -rf .harness-src
+          echo "H=$RUNNER_TEMP/h/harness" >> "$GITHUB_ENV"
+          echo "EVIDENCE_DIR=$RUNNER_TEMP/evidence" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/evidence"
+
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+          ref: ${{ env.MODE == 'new' && github.event.repository.default_branch || env.BRANCH }}
+          fetch-depth: 0
+      - name: Prepare branch
+        if: env.MODE == 'new'
+        run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout -b "$BRANCH"
+          fi
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      # v5 on purpose: v6 moves caching into a proprietary component with separate ToS.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+
+      # ---- Device tier: emulator + android CLI -------------------------------------------------
+      - name: Emulator config
+        if: env.TIER == 'device'
+        id: emu
+        run: echo "key=avd-$(yq -r '.emulator | [.api_level, .target, .arch, .device] | join("-")' "$H/harness.yml")-v1" >> "$GITHUB_OUTPUT"
+      # ANDROID_HOME on ubuntu-latest is /usr/local/lib/android/sdk (the env context cannot see it).
+      - name: Restore AVD cache
+        if: env.TIER == 'device'
+        id: avd-cache
+        uses: actions/cache/restore@v6
+        with:
+          key: ${{ steps.emu.outputs.key }}
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+            /usr/local/lib/android/sdk/system-images
+            /usr/local/lib/android/sdk/emulator
+      - name: Set up emulator
+        if: env.TIER == 'device'
+        run: '"$H/emulator.sh" setup'
+      - name: Create quick-boot snapshot
+        if: env.TIER == 'device' && steps.avd-cache.outputs.cache-hit != 'true'
+        run: '"$H/emulator.sh" snapshot'
+      - name: Save AVD cache
+        if: env.TIER == 'device' && steps.avd-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.emu.outputs.key }}
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+            /usr/local/lib/android/sdk/system-images
+            /usr/local/lib/android/sdk/emulator
+      - name: Boot emulator
+        if: env.TIER == 'device'
+        run: '"$H/emulator.sh" start'
+      - name: Install android CLI
+        if: env.TIER == 'device'
+        continue-on-error: true # adb still works if this fails; the Builder falls back to it
+        run: |
+          curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
+          for d in "$HOME/.local/bin" "$HOME/.android/cli/bin" "$HOME/bin"; do
+            [[ -d "$d" ]] && echo "$d" >> "$GITHUB_PATH" && export PATH="$d:$PATH"
+          done
+          android --version
+          android init </dev/null
+          android skills list || true
+          adb devices
+
+      # ---- Claude ------------------------------------------------------------------------------
+      - name: Build prompt
+        id: prompt
+        env:
+          TRIGGER: ${{ needs.gate.outputs.trigger }}
+        run: |
+          {
+            echo "text<<__PROMPT_EOF__"
+            cat "$H/prompts/builder.md"
+            echo
+            echo "## Task"
+            echo
+            echo "- Repository: $GITHUB_REPOSITORY"
+            echo "- Mode: \`$MODE\`"
+            echo "- Issue: #$ISSUE"
+            [[ -n "$PR" ]] && echo "- PR: #$PR"
+            echo "- Branch: \`$BRANCH\` (already checked out)"
+            if [[ "$TIER" == "device" ]]; then
+              echo "- Tier: \`device\` (label \`agent:device\`). An emulator is running."
+              echo "- Evidence directory: \`$EVIDENCE_DIR\`"
+            else
+              echo "- Tier: \`agent\` (label \`agent\`). No emulator: verify with unit tests and previews."
+            fi
+            [[ -n "$CI_RUN" ]] && echo "- Failed CI run: $CI_RUN"
+            echo "- Trigger:"
+            echo
+            sed 's/^/  > /' <<<"$TRIGGER"
+            echo "__PROMPT_EOF__"
+            echo "schema=$(jq -c . "$H/schemas/builder.json")"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          CLAUDE_BRANCH: ${{ env.BRANCH }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.app.outputs.token }}
+          bot_name: ${{ steps.app.outputs.app-slug }}[bot]
+          bot_id: "334797901"
+          allowed_bots: bentrengrove-builder,bentrengrove-reviewer
+          classify_inline_comments: "false"
+          include_fix_links: "false"
+          prompt: ${{ steps.prompt.outputs.text }}
+          claude_args: |
+            --max-turns ${{ needs.gate.outputs.max_turns }}
+            --json-schema '${{ steps.prompt.outputs.schema }}'
+            --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,TodoWrite"
+            --allowedTools "Bash(./gradlew:*),Bash(git:*),Bash(gh:*),Bash(adb:*),Bash(android:*)"
+            --allowedTools "Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(mkdir:*),Bash(sleep:*),Bash(find:*),Bash(grep:*),Bash(wc:*),Bash(diff:*),Bash(jq:*)"
+
+      # ---- Post-run (always) -------------------------------------------------------------------
+      - id: post-app
+        if: always()
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BUILDER_CLIENT_ID }}
+          private-key: ${{ secrets.BUILDER_APP_KEY }}
+      - name: Publish device evidence
+        if: always() && env.TIER == 'device'
+        env:
+          GH_TOKEN: ${{ steps.post-app.outputs.token }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          pr="$(jq -r '.pr_number // empty' <<<"${RESULT:-null}" 2>/dev/null || true)"
+          pr="${pr:-$PR}"
+          [[ -n "$pr" ]] || { echo "No PR; skipping evidence."; exit 0; }
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          "$H/evidence.sh" "$pr" "$EVIDENCE_DIR"
+      - name: Finish
+        if: always()
+        env:
+          GH_TOKEN: ${{ steps.post-app.outputs.token }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          CONCLUSION: ${{ steps.claude.outputs.conclusion || steps.claude.outcome }}
+        run: '"$H/finish.sh" "$ISSUE" "$PR" "$MODE" "$TIER" "$CONCLUSION" "$RESULT"'
+      - name: Stop emulator
+        if: always() && env.TIER == 'device'
+        run: '"$H/emulator.sh" stop'
