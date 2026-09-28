@@ -89,6 +89,12 @@ case "${1:-}" in
     echo "AVDs: $(emulator -list-avds | tr '\n' ' ')"
     emulator -list-avds | grep -qx "$AVD" || fail "Emulator can't see AVD '$AVD' in $ANDROID_AVD_HOME."
     emulator -accel-check || echo "::warning::Hardware acceleration check failed."
+    # Make adb/emulator available to later steps (and to Claude's Bash tool in the Builder).
+    if [[ -n "${GITHUB_PATH:-}" ]]; then
+      printf '%s\n' "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" "$ANDROID_HOME/cmdline-tools/latest/bin" >>"$GITHUB_PATH"
+      printf 'ANDROID_AVD_HOME=%s\nANDROID_USER_HOME=%s\nANDROID_EMULATOR_HOME=%s\n' \
+        "$ANDROID_AVD_HOME" "$ANDROID_USER_HOME" "$ANDROID_EMULATOR_HOME" >>"$GITHUB_ENV"
+    fi
     ;;
   snapshot)
     launch -no-snapshot-load

@@ -46,6 +46,20 @@ jobs:
           adb pull /sdcard/rec.mp4 "$RUNNER_TEMP/proof/rec.mp4" || true
           adb shell getprop ro.build.version.sdk
           ls -la "$RUNNER_TEMP/proof"
+      # Same install as agent-builder.yml, but fatal here so we find out if it breaks.
+      - name: Install android CLI
+        run: |
+          curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
+          for d in "$HOME/.local/bin" "$HOME/.android/cli/bin" "$HOME/bin"; do
+            [[ -d "$d" ]] && echo "$d" >> "$GITHUB_PATH" && export PATH="$d:$PATH"
+          done
+          echo "android at: $(command -v android)"
+          android --version
+          android init </dev/null
+          android skills list || true
+          ls -la "$HOME/.claude/skills" 2>/dev/null || echo "no ~/.claude/skills"
+          android screen capture -o "$RUNNER_TEMP/proof/android-cli.png"
+          android layout | head -c 600 || true
       - name: Emulator log
         if: always()
         run: |
