@@ -11,7 +11,8 @@ bots:
     login: bentrengrove-reviewer[bot]
     id: 334798468
 
-# Model per agent role (passed as --model). Empty = claude-code-action's default.
+# Model per agent role, passed to claude-code-action as --model. Builder and Reviewer must be
+# set; the Gardener does not read this yet (it uses the action default).
 models:
   builder: claude-opus-5-5
   reviewer: claude-opus-5-5
