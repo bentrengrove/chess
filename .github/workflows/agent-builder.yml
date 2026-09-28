@@ -1,6 +1,6 @@
 name: Agent Builder
 
-# Turns owner-approved issues into PRs, and iterates on them after @claude comments, change
+# Turns owner-approved issues into PRs, and iterates on them after owner comments mentioning @bentrengrove-builder, change
 # requests (from the owner or the Reviewer) and CI failures. The state machine lives in
 # harness/gate.sh (before) and harness/finish.sh (after); the model only writes code and PRs.
 
@@ -25,13 +25,14 @@ jobs:
   gate:
     name: gate
     # Cheap pre-filter so unrelated events don't even start a runner. gate.sh re-checks everything.
+    # '@bentrengrove-builder' must match trigger_phrase in harness/harness.yml.
     if: >-
       (github.event_name == 'issues' && github.event.sender.login == github.repository_owner &&
         (github.event.label.name == 'agent' || github.event.label.name == 'agent:device')) ||
       (github.event_name == 'issue_comment' && github.event.comment.user.login == github.repository_owner &&
-        contains(github.event.comment.body, '@claude')) ||
+        contains(github.event.comment.body, '@bentrengrove-builder')) ||
       (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login == github.repository_owner &&
-        contains(github.event.comment.body, '@claude')) ||
+        contains(github.event.comment.body, '@bentrengrove-builder')) ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' &&
         startsWith(github.event.pull_request.head.ref, 'agent/')) ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' &&
