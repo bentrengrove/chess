@@ -139,7 +139,7 @@ jobs:
       - name: Emulator config
         if: env.TIER == 'device'
         id: emu
-        run: echo "key=avd-$(yq -r '.emulator.profile' "$H/harness.yml")-v2" >> "$GITHUB_OUTPUT"
+        run: echo "key=avd-$(yq -r '.emulator.profile' "$H/harness.yml")-v3" >> "$GITHUB_OUTPUT"
       # ANDROID_HOME on ubuntu-latest is /usr/local/lib/android/sdk (the env context cannot see it).
       - name: Restore AVD cache
         if: env.TIER == 'device'
@@ -148,6 +148,8 @@ jobs:
         with:
           key: ${{ steps.emu.outputs.key }}
           path: |
+            ~/.android/*.avd
+            ~/.android/*.ini
             ~/.android/avd/*
             ~/.android/adb*
             /usr/local/lib/android/sdk/system-images
@@ -164,6 +166,8 @@ jobs:
         with:
           key: ${{ steps.emu.outputs.key }}
           path: |
+            ~/.android/*.avd
+            ~/.android/*.ini
             ~/.android/avd/*
             ~/.android/adb*
             /usr/local/lib/android/sdk/system-images
