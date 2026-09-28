@@ -57,6 +57,16 @@ case "$st" in
     "$status" labels "$pr" "$tier_label" "agent:working"
     "$status" labels "$issue" "" "agent:working"
     headline="⏳ PR #$pr ${st#pr_}, waiting for CI and review."
+    # If the Reviewer already reviewed the current head, no new push happened (e.g. only evidence
+    # or the PR body changed), so CI won't wake it again. Ask for a re-review explicitly.
+    head="$(gh pr view "$pr" --repo "$repo" --json headRefOid -q .headRefOid)"
+    reviewer="$(yq -r .bots.reviewer.login "$cfg")"
+    seen="$(gh api "repos/$repo/pulls/$pr/reviews" --paginate \
+      -q "[.[] | select(.user.login == \"$reviewer\" and .commit_id == \"$head\")] | length")"
+    if [[ "$seen" != 0 ]]; then
+      gh api "repos/$repo/dispatches" -f event_type=agent-review -F "client_payload[pr]=$pr" >/dev/null &&
+        headline="⏳ PR #$pr updated without new commits; re-review requested."
+    fi
     ;;
   needs_info)
     "$status" labels "$issue" "agent:needs-info" "agent:working"
