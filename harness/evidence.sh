@@ -23,11 +23,19 @@ if ((${#media[@]} == 0)); then
   exit 0
 fi
 
-# Recordings -> GIF (inline) + keep the MP4 (linked).
-for mp4 in "$src"/*.mp4; do
+# Recordings -> GIF (inline) + keep the MP4 (linked). ubuntu-latest has no ffmpeg; install it on
+# demand. A failed conversion only loses the inline GIF, never the evidence.
+mp4s=("$src"/*.mp4)
+if ((${#mp4s[@]})) && ! command -v ffmpeg >/dev/null; then
+  { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null; } ||
+    echo "::warning::Could not install ffmpeg; recordings will be linked, not inlined."
+fi
+for mp4 in "${mp4s[@]}"; do
   gif="${mp4%.mp4}.gif"
-  [[ -e "$gif" ]] || ffmpeg -loglevel error -y -i "$mp4" \
-    -vf "fps=10,scale=360:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse" "$gif"
+  [[ -e "$gif" ]] && continue
+  ffmpeg -loglevel error -y -i "$mp4" \
+    -vf "fps=10,scale=360:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse" "$gif" ||
+    { echo "::warning::GIF conversion failed for $(basename "$mp4")"; rm -f "$gif"; }
 done
 
 work="$(mktemp -d)"

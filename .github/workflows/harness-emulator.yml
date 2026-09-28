@@ -2,6 +2,7 @@ name: Harness emulator smoke test
 
 # Boots the agent:device emulator exactly as the Builder does, using this PR's harness/, so
 # emulator changes are proven on a real runner before the Builder depends on them.
+# On main it also writes the AVD cache the Builder restores (Builder runs can only read caches).
 # No secrets are used.
 
 on:
@@ -10,6 +11,14 @@ on:
       - harness/emulator.sh
       - harness/harness.yml
       - .github/workflows/harness-emulator.yml
+  push:
+    branches: [main]
+    paths:
+      - harness/emulator.sh
+      - harness/harness.yml
+      - .github/workflows/harness-emulator.yml
+  schedule:
+    - cron: "17 3 * * 1" # weekly, so the AVD cache is not evicted between Builder runs
   workflow_dispatch:
 
 permissions:
@@ -32,6 +41,22 @@ jobs:
         run: harness/emulator.sh setup
       - name: Cold boot + snapshot
         run: harness/emulator.sh snapshot
+      # Key and paths must match the "Restore AVD cache" step in agent-builder.yml exactly.
+      - name: AVD cache key
+        id: emu
+        run: echo "key=avd-$(yq -r '.emulator.profile' harness/harness.yml)-v3" >> "$GITHUB_OUTPUT"
+      - name: Save AVD cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.emu.outputs.key }}
+          path: |
+            ~/.android/*.avd
+            ~/.android/*.ini
+            ~/.android/avd/*
+            ~/.android/adb*
+            /usr/local/lib/android/sdk/system-images
+            /usr/local/lib/android/sdk/emulator
       - name: Boot from snapshot
         run: |
           start=$SECONDS
