@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -122,6 +124,8 @@ private fun CapturedRow(
 fun MoveHistoryList(
     history: List<Move>,
     modifier: Modifier = Modifier,
+    startingMoveNumber: Int = 1,
+    startingTurn: PieceColor = PieceColor.White,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -140,11 +144,16 @@ fun MoveHistoryList(
                 )
             }
         } else {
-            val movePairs = history.chunked(2)
-            LazyColumn(modifier = Modifier.padding(vertical = 4.dp)) {
+            // A game loaded with Black to move starts with an empty White slot in its first row.
+            val paddedHistory = if (startingTurn == PieceColor.Black) listOf(null) + history else history
+            val movePairs = paddedHistory.chunked(2)
+            // Keep the latest move in view, e.g. after loading a long PGN or stepping through it.
+            val listState = rememberLazyListState()
+            LaunchedEffect(movePairs.size) { listState.scrollToItem(movePairs.lastIndex) }
+            LazyColumn(state = listState, modifier = Modifier.padding(vertical = 4.dp)) {
                 itemsIndexed(movePairs) { index, pair ->
                     MoveHistoryRow(
-                        moveNumber = index + 1,
+                        moveNumber = startingMoveNumber + index,
                         white = pair.getOrNull(0),
                         black = pair.getOrNull(1),
                     )
@@ -229,6 +238,19 @@ private fun MoveHistoryListPreview() {
                     Move(Position(4, 1), Position(4, 3)),
                     Move(Position(6, 7), Position(5, 5)),
                 ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MoveHistoryListLoadedMidGamePreview() {
+    ChessTheme {
+        val game = Game.fromPgn("[FEN \"4k3/8/8/8/8/8/4P3/4K3 b - - 0 12\"]\n\n12... Kd7 13. e4 Ke6")
+        MoveHistoryList(
+            history = game.history,
+            startingMoveNumber = game.startingFullmoveNumber,
+            startingTurn = game.startingTurn,
         )
     }
 }
