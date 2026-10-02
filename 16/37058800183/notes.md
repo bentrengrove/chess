@@ -1,0 +1,10 @@
+- 01: Title screen with the new "Load Game" button.
+- 02: Load Game dialog with a PGN (Opera-game opening, 7 moves) typed in.
+- 03: PGN loaded: board, captures and numbered move list (1-7) match the PGN.
+- 04: After stepping back 5 moves: position after 5. Qxf3, move list trimmed, redo enabled.
+- 05: After stepping forward 3 moves: position after 6... Nf6.
+- 06 (video): stepping back and forward through the loaded PGN.
+- 07/08: FEN with Black to move (after 1. e4) entered and loaded: "Black's Turn", no moves yet.
+- 09: Two moves played from the FEN: move list starts "1. … d7→d5" with White's slot empty.
+- 10: Stepped back twice: returns to the FEN position (pawn on e4), not the standard start.
+- 11: Invalid PGN ("2. Ke3" is illegal) keeps the dialog open with an error.
