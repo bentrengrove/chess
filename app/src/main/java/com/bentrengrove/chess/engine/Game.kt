@@ -54,6 +54,9 @@ data class Game(
     val startingEnPassantTarget: Position? = null,
     val halfmoveClock: Int = 0,
     val fullmoveNumber: Int = 1,
+    // The full FEN this game was loaded from, or null for the standard start. Lets
+    // startingPosition rebuild the exact starting board, which history alone can't recover.
+    val startingFen: String? = null,
 ) {
     companion object {
         /** Parses a full FEN string ("piece-placement active-color castling ep half full"). */
@@ -92,7 +95,17 @@ data class Game(
                 startingEnPassantTarget = enPassantTarget,
                 halfmoveClock = halfmoveClock,
                 fullmoveNumber = fullmoveNumber,
+                startingFen = fen.trim(),
             )
+        }
+
+        /**
+         * Loads user-supplied text as a FEN string when its first field looks like a FEN piece
+         * placement (eight ranks separated by "/"), and as PGN otherwise.
+         */
+        fun fromFenOrPgn(text: String): Game {
+            val firstField = text.trim().split(Regex("\\s+")).first()
+            return if (firstField.count { it == '/' } == 7) fromFen(text) else fromPgn(text)
         }
 
         /**
@@ -350,8 +363,33 @@ data class Game(
             startingEnPassantTarget = startingEnPassantTarget,
             halfmoveClock = if (isPawnMove || isCapture) 0 else halfmoveClock + 1,
             fullmoveNumber = if (turn == PieceColor.Black) fullmoveNumber + 1 else fullmoveNumber,
+            startingFen = startingFen,
         )
     }
+
+    /** This game's position before any of [history] was played. */
+    val startingPosition: Game
+        get() = startingFen?.let { fromFen(it) } ?: Game()
+
+    /** The fullmove number of the first move in [history], for numbering a move list. */
+    val startingFullmoveNumber: Int
+        get() {
+            val blackMoves = if (startingTurn == PieceColor.White) history.size / 2 else (history.size + 1) / 2
+            return fullmoveNumber - blackMoves
+        }
+
+    /** Plays [move], resolving a promotion to the move's recorded piece (a queen if none is recorded). */
+    fun play(move: Move): Game =
+        when (val result = doMove(move.from, move.to)) {
+            is MoveResult.Success -> result.game
+            is MoveResult.Promotion -> (result.onPieceSelection(move.promotion ?: PieceType.Queen) as MoveResult.Success).game
+        }
+
+    /** Plays each of [moves] in order from this position. */
+    fun replay(moves: List<Move>): Game = moves.fold(this) { game, move -> game.play(move) }
+
+    /** This game with its last move taken back, rebuilt from [startingPosition]. */
+    fun undoLastMove(): Game = startingPosition.replay(history.dropLast(1))
 
     fun movesForPieceAt(position: Position?): List<Position> {
         if (position == null) return emptyList()
