@@ -1,0 +1,3 @@
+- 01: Reviewer's FEN (1. e4 Nf6 2. Nf3) loaded: both knights are off their home files and the Captured panel is empty (before the fix, each side showed a captured knight).
+- 02: After 3. d4 Nxe4 the real capture shows: Black captured a pawn, +1.
+- 03: One step back: the capture is undone and the panel is empty again.
