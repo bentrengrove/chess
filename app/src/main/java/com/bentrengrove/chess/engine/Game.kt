@@ -514,15 +514,33 @@ data class Game(
             .sum()
 
     fun capturedPiecesFor(color: PieceColor): List<Piece> {
-        val startingPieces = STARTING_PIECES.filter { it.color == color }.map { it.id }.toSet()
+        val startingPieces = STARTING_PIECES.filter { it.color == color }
         val currentPieces =
             board.allPieces
                 .map { it.second }
                 .filter { it.color == color }
-                .map { it.id }
-                .toSet()
-        val capturedPieces = startingPieces - currentPieces
-        return capturedPieces.map { Piece.pieceFromString(it) }
+        if (startingFen == null) {
+            // From the standard position each id tracks one starting piece, so a missing id
+            // is exactly a captured piece (a promoted pawn keeps its id, so isn't counted).
+            val currentIds = currentPieces.map { it.id }.toSet()
+            return startingPieces.filter { it.id !in currentIds }
+        }
+
+        // A FEN start's ids say nothing about which starting piece is which, so count what's
+        // missing from the standard set by type instead. Types come from the id, so a pawn
+        // promoted after loading still counts as a pawn, matching the standard case.
+        val missingByType =
+            startingPieces
+                .groupingBy { it.type }
+                .eachCount()
+                .mapValues { (type, count) ->
+                    count - currentPieces.count { Piece.pieceFromString(it.id).type == type }
+                }.toMutableMap()
+        return startingPieces.filter { piece ->
+            val missing = missingByType.getValue(piece.type)
+            if (missing > 0) missingByType[piece.type] = missing - 1
+            missing > 0
+        }
     }
 }
 

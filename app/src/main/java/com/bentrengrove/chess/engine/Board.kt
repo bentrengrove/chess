@@ -203,6 +203,11 @@ data class Board(
             val ranks = placement.split("/")
             require(ranks.size == 8) { "FEN piece placement '$placement' must have 8 ranks" }
 
+            // Ids follow INITIAL_BOARD's "<colour><type><file>" convention so a standard FEN
+            // reproduces Board() exactly. A piece whose file id is already taken (doubled
+            // pawns, two rooks on one file, promoted pieces) gets the lowest free digit
+            // instead, keeping ids unique: no colour can have more than 10 of one type.
+            val usedIds = mutableSetOf<String>()
             val grid =
                 ranks.map { rank ->
                     val squares = mutableListOf<Piece?>()
@@ -217,7 +222,13 @@ data class Board(
                             val color = if (c.isUpperCase()) PieceColor.White else PieceColor.Black
                             val type = pieceTypeFromFenChar(c)
                             val colorChar = if (color == PieceColor.White) "W" else "B"
-                            squares.add(Piece("$colorChar${c.uppercaseChar()}$file", type, color))
+                            val prefix = "$colorChar${c.uppercaseChar()}"
+                            val id =
+                                "$prefix$file".takeIf { it !in usedIds }
+                                    ?: (0..9).map { "$prefix$it" }.firstOrNull { it !in usedIds }
+                                    ?: throw IllegalArgumentException("FEN '$placement' has too many '$c' pieces")
+                            usedIds.add(id)
+                            squares.add(Piece(id, type, color))
                             file++
                         }
                     }
