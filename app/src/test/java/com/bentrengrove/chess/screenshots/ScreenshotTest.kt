@@ -28,6 +28,7 @@ import com.bentrengrove.chess.gamescreen.GameView
 import com.bentrengrove.chess.gamescreen.GameViewModel
 import com.bentrengrove.chess.gamescreen.MoveHistoryList
 import com.bentrengrove.chess.gamescreen.PromotionOverlay
+import com.bentrengrove.chess.titlescreen.LoadGameDialogContent
 import com.bentrengrove.chess.titlescreen.TitleView
 import com.bentrengrove.chess.ui.ChessTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -81,6 +82,18 @@ class ScreenshotTest {
 
     @Test
     fun gameStatusView_dark() = captureGameStatusView(darkTheme = true)
+
+    @Test
+    fun loadGameDialog_light() = captureLoadGameDialog(darkTheme = false)
+
+    @Test
+    fun loadGameDialog_dark() = captureLoadGameDialog(darkTheme = true)
+
+    @Test
+    fun moveHistoryLoadedMidGame_light() = captureMoveHistoryLoadedMidGame(darkTheme = false)
+
+    @Test
+    fun moveHistoryLoadedMidGame_dark() = captureMoveHistoryLoadedMidGame(darkTheme = true)
 
     @OptIn(ExperimentalSharedTransitionApi::class)
     private fun captureTitleScreen(darkTheme: Boolean) {
@@ -145,6 +158,35 @@ class ScreenshotTest {
                             Move(Position(4, 1), Position(4, 3)),
                             Move(Position(6, 7), Position(5, 5)),
                         ),
+                )
+            }
+        }
+
+    private fun captureLoadGameDialog(darkTheme: Boolean) =
+        capture(darkTheme) {
+            // The dialog window isn't part of the compose root, so capture its content directly,
+            // in the error state shown after an illegal move.
+            Box(modifier = Modifier.padding(24.dp)) {
+                LoadGameDialogContent(
+                    text = "1. e4 e5 2. Ke3",
+                    isError = true,
+                    onTextChange = {},
+                    onLoad = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+    private fun captureMoveHistoryLoadedMidGame(darkTheme: Boolean) =
+        capture(darkTheme) {
+            // Loaded from a FEN with Black to move at move 12: numbering starts at 12 with an
+            // empty White slot.
+            val game = Game.fromPgn("[FEN \"4k3/8/8/8/8/8/4P3/4K3 b - - 0 12\"]\n\n12... Kd7 13. e4 Ke6")
+            Box(modifier = Modifier.padding(12.dp)) {
+                MoveHistoryList(
+                    history = game.history,
+                    startingMoveNumber = game.startingFullmoveNumber,
+                    startingTurn = game.startingTurn,
                 )
             }
         }
