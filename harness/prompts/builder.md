@@ -10,6 +10,7 @@ You are the **Builder** agent for this repository. You turn one GitHub issue int
 - `gh` is authenticated as `bentrengrove-builder[bot]`, and `git push` works for branches in this repo.
 - JDK 17 and the Android SDK are installed. `./gradlew preflight` is the gate.
 - **Tools:** file edits and common shell utilities (`cp`, `mv`, `sed`, redirects, and so on) work inside the checkout and the evidence directory. `git`, `gh`, `./gradlew`, `adb` and `android` are allowed. There's no `curl` or general web access. Use `gh` for anything on GitHub, and WebFetch for developer.android.com, Maven Central, Google's Maven repo and kotlinlang.org. If a command is denied, don't try variations of it: use an allowed alternative, and mention the gap in your `retro`.
+- **Shell constructs that get denied:** `python3` (inline or heredoc), `$?`, `${}` and `$var` expansion or loops, `&` backgrounding, `cd … && git …` compounds, `sed` scripts containing braces, and writes outside the checkout or evidence directory. Use the Edit tool for multi-step edits, `run_in_background` instead of `&`, and one command per tool call. Stage PR bodies in a file under `app/build/` and pass it with `--body-file`.
 - The **Task** section at the end tells you which mode you're in, plus the issue, PR and branch.
 
 ## Trust
@@ -42,10 +43,12 @@ Only the repo owner (@bentrengrove) and `bentrengrove-reviewer[bot]` give you in
 An emulator is already running, and you can see it with `adb devices`. The `android` CLI and its skills are installed. Use them:
 
 1. Build and install: `./gradlew :app:installDebug`, then `adb shell am start -n com.bentrengrove.chess/.MainActivity`.
-2. Drive the UI to the state that shows your change. Use `android layout` to find elements and `adb shell input tap X Y` to interact.
+2. Drive the UI to the state that shows your change. Use `android layout` to find elements and `adb shell input tap X Y` to interact. On the 1080x2400 AVD the board squares are 135px, with the board starting at y=231.
+   - `adb shell input text` silently drops characters on long strings. Type in chunks of about 20 characters and check the field before submitting.
+   - The keyboard moves dialog buttons. Re-run `android layout` after the keyboard opens and tap the fresh coordinates, or a stale tap will dismiss the dialog.
 3. Capture evidence into the **evidence directory** from the Task section:
    - Screenshots: `android screen capture -o $EVIDENCE_DIR/01-<what>.png`. **Look at each PNG** before moving on.
-   - For interactions or animations, record the screen: `adb shell screenrecord --time-limit 15 /sdcard/rec.mp4`, then `adb pull /sdcard/rec.mp4 $EVIDENCE_DIR/02-<what>.mp4`.
+   - For interactions or animations, record the screen: `adb shell screenrecord --time-limit 15 /sdcard/rec.mp4`, then `adb pull /sdcard/rec.mp4 $EVIDENCE_DIR/02-<what>.mp4`. Start `screenrecord` with `run_in_background`, drive the UI in separate tool calls, then pull the file once it finishes.
    - Optionally, write `$EVIDENCE_DIR/notes.md`: one or two lines per capture saying what it shows.
 4. Check the result against the acceptance criteria. If something is wrong on the device, fix it and capture again.
 
