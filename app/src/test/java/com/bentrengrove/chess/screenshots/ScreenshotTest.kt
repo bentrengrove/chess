@@ -71,6 +71,12 @@ class ScreenshotTest {
     fun boardMoveMarkers_dark() = captureBoardMoveMarkers(darkTheme = true)
 
     @Test
+    fun boardBlackOrientation_light() = captureBoardBlackOrientation(darkTheme = false)
+
+    @Test
+    fun boardBlackOrientation_dark() = captureBoardBlackOrientation(darkTheme = true)
+
+    @Test
     fun promotionPicker_light() = capturePromotionPicker(darkTheme = false)
 
     @Test
@@ -113,6 +119,21 @@ class ScreenshotTest {
             val game = Game.fromPgn("1. e4 d5")
             val selection = Position(4, 4)
             GameView(game = game, selection = selection, moves = game.movesForPieceAt(selection), didTap = {})
+        }
+
+    private fun captureBoardBlackOrientation(darkTheme: Boolean) =
+        capture(darkTheme) {
+            // The move-markers position drawn from Black's side, so the selection, last-move
+            // highlight, markers, pieces and coordinate labels can all be checked as flipped.
+            val game = Game.fromPgn("1. e4 d5")
+            val selection = Position(4, 4)
+            GameView(
+                game = game,
+                selection = selection,
+                moves = game.movesForPieceAt(selection),
+                didTap = {},
+                orientation = PieceColor.Black,
+            )
         }
 
     private fun capturePromotionPicker(darkTheme: Boolean) =
