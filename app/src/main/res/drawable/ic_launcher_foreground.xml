@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon foreground: an original knight silhouette, kept inside the 66dp safe zone
+     (a circle of radius 33 around 54,54) so it survives every launcher mask. The knight shape is
+     shared with ic_launcher_monochrome; keep the two in sync. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Head and neck (with the eye cut out) and the plinth. The cream outline separates the
+         dark knight from the dark squares behind it. -->
+    <path
+        android:fillColor="#14171D"
+        android:fillType="evenOdd"
+        android:pathData="M40.5,68L68.5,68C70,58 70,48 64,39C61,34 57,31 54,30L53,25L49,30C44,33 40,38 36,46C35,48 35,51 37,53C40,55 44,53 47,51C44,56 40,62 40.5,68ZM48.2,38a1.8,1.8 0,1 0,3.6 0a1.8,1.8 0,1 0,-3.6 0ZM38,73L70,73Q71.5,73 71.5,74.5L71.5,77.5Q71.5,79 70,79L38,79Q36.5,79 36.5,77.5L36.5,74.5Q36.5,73 38,73Z"
+        android:strokeColor="#F0D9B5"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.5" />
+    <!-- Collar between the neck and the plinth, in the app's blue800 accent. -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M38.5,68.75L69.5,68.75L69.5,73L38.5,73Z" />
+</vector>
