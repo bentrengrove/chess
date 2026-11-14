@@ -107,6 +107,8 @@ fun GameView(
                 CapturedPiecesPanel(game = game)
                 MoveHistoryList(
                     history = game.history,
+                    startingMoveNumber = game.startingFullmoveNumber,
+                    startingTurn = game.startingTurn,
                     modifier = Modifier.weight(1f),
                 )
             }

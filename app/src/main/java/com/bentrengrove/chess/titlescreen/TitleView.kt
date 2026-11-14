@@ -16,6 +16,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,6 +40,8 @@ fun TitleView(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
+    var showLoadDialog by rememberSaveable { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize().background(titleScreenBackground)) {
         FallingPiecesBackground(
             sharedTransitionScope = sharedTransitionScope,
@@ -63,7 +69,26 @@ fun TitleView(
                 onClick = { newGame(backStack, gameViewModel, aiEnabled = true) },
                 text = "vs Computer",
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            GameButton(
+                onClick = { showLoadDialog = true },
+                text = "Load Game",
+            )
         }
+    }
+
+    if (showLoadDialog) {
+        LoadGameDialog(
+            onLoad = { text ->
+                val loaded = gameViewModel.loadGame(text)
+                if (loaded) {
+                    showLoadDialog = false
+                    backStack.add(Screen.Game)
+                }
+                loaded
+            },
+            onDismiss = { showLoadDialog = false },
+        )
     }
 }
 
