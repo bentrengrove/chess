@@ -1,0 +1,20 @@
+[Event "Vienna Gambit"]
+[Side "White"]
+
+{The Vienna Gambit: White develops the queen's knight first, then strikes at e5 with the f-pawn, aiming for a quick attack down the f-file.}
+1. e4 e5 2. Nc3 {Supports e4 and keeps the f-pawn free to advance.} Nf6
+3. f4 {The gambit. White challenges e5 at once and hopes to open the f-file.}
+3... d5 {The principled reply: Black hits back in the centre.}
+    (3... exf4 {Accepting the pawn.} 4. e5 {Gains space and kicks the knight.} Ng8
+    5. Nf3 d6 6. d4 dxe5 7. Qe2 {Pins the e5 pawn against the king on the e-file.} Be7
+    8. dxe5 Nc6 9. Bxf4 {White has the pawn back with a big lead in space and development.})
+    (3... d6 {A solid, passive defence of e5.} 4. Nf3 Nc6 5. Bb5 {Pins the knight that defends e5.} Bd7
+    6. d3 Be7 7. O-O O-O 8. Bxc6 Bxc6 9. fxe5 dxe5
+    10. Qe1 {The queen heads for g3 to join the kingside attack.})
+4. fxe5 {Takes the pawn and drives the f6 knight away.} Nxe4 {The knight jumps into the hole on e4.}
+5. Nf3 {Develops and guards e5, ready for d3 or Qe2 to challenge the knight.}
+5... Be7
+    (5... Bg4 {Pins the f3 knight.} 6. Qe2 {Attacks the e4 knight, which has no good retreat.} Nxc3 7. dxc3
+    Nc6 8. Bf4 Be7 9. O-O-O {White castles long and opens the d-file against d5.})
+6. Qe2 {Hits the e4 knight.} Nxc3 7. dxc3 {Recapturing towards the centre opens lines for the bishop and queen.} c5
+8. Bf4 {Protects e5.} Nc6 9. O-O-O {Queenside castling puts the rook on the d-file, aiming at d5.} *

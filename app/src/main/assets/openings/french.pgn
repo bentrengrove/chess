@@ -1,0 +1,18 @@
+[Event "French Defence"]
+[Side "Black"]
+
+{The French Defence: Black builds a solid pawn chain with e6 and d5, accepting a slightly cramped position in return for counterplay against White's centre.}
+1. e4 e6 {Prepares d5 to challenge e4.} 2. d4 d5 {Black stakes a claim in the centre.}
+3. e5 {The Advance Variation gains space but leaves d4 as a target.}
+    (3. exd5 {The Exchange Variation gives a symmetrical structure.} exd5 {Black's light-squared bishop is no longer locked in.}
+    4. Nf3 Nf6 5. Bd3 Bd6 6. O-O O-O 7. Bg5 Bg4 {Black mirrors White's development.}
+    8. Nbd2 Nbd7 9. c3 c6 {A solid, balanced position.})
+    (3. Nd2 {The Tarrasch Variation avoids the pin from Bb4.} c5 {Striking at d4 straight away.}
+    4. exd5 Qxd5 {The queen recaptures, giving Black free piece play.} 5. Ngf3 cxd4
+    6. Bc4 Qd6 7. O-O Nf6 8. Nb3 Nc6 9. Nbxd4 Nxd4 10. Nxd4 a6 {Black stops Bb5 and prepares b5 and Bb7.})
+    (3. Nc3 {The main line.} Bb4 {The Winawer: pinning the knight that defends e4.}
+    4. e5 c5 5. a3 Bxc3+ {Black gives up the bishop pair to double White's pawns.} 6. bxc3 Ne7
+    7. Qg4 {Attacks the g7 pawn, now that the dark-squared bishop has gone.} Qc7 {The Poisoned Pawn: Black counterattacks c3 instead of defending g7.}
+    8. Qxg7 Rg8 9. Qxh7 cxd4 10. Ne2 Nbc6 {Black's pieces swarm the centre while White grabs kingside pawns.})
+3... c5 {Black attacks the base of White's pawn chain.} 4. c3 Nc6 {Adds pressure to d4.} 5. Nf3 Qb6 {A third attacker on d4, and the queen eyes b2.}
+6. Be2 cxd4 7. cxd4 Nh6 {Heading for f5 to hit d4 once more.} 8. Nc3 Nf5 9. Na4 Qa5+ 10. Bd2 Bb4 {Black trades off the dark-squared bishops and keeps the pressure on d4.} *
