@@ -222,6 +222,15 @@ class OpeningPgnTest {
         }
     }
 
+    @Test(timeout = 5_000)
+    fun rejectsAStrayClosingBraceInsteadOfHanging() {
+        val error =
+            assertThrows(IllegalArgumentException::class.java) {
+                Opening.fromPgn("1. e4 } e5", name = "x", side = PieceColor.White)
+            }
+        assertTrue(error.message!!.contains("Unmatched '}'"))
+    }
+
     @Test
     fun linesAreDeterministicAndCoverEveryLeaf() {
         val pgn = "1. e4 e5 (1... c5 2. Nf3) (1... e6 2. d4) 2. Nf3"

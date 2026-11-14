@@ -130,6 +130,10 @@ private fun tokenize(movetext: String): List<PgnToken> {
                 i = end + 1
             }
 
+            c == '}' -> {
+                throw IllegalArgumentException("Unmatched '}' at '${movetext.substring(i).take(20)}'")
+            }
+
             c == ';' -> {
                 val end = movetext.indexOf('\n', i).let { if (it < 0) movetext.length else it }
                 i = end
