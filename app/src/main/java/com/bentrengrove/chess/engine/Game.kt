@@ -605,7 +605,7 @@ private fun pieceTypeFromSanChar(c: Char): PieceType =
     }
 
 /** Applies one SAN token (e.g. "Nbd7", "exd8=Q+", "O-O") to this game, resolving disambiguation. */
-private fun Game.applySanMove(san: String): Game {
+internal fun Game.applySanMove(san: String): Game {
     val token = san.trim().trimEnd('+', '#', '!', '?')
     val kingsRow = if (turn == PieceColor.Black) 0 else 7
 
