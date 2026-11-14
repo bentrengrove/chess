@@ -55,6 +55,7 @@ fun GameView(
     didTap: (Position) -> Unit,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    orientation: PieceColor = PieceColor.White,
 ) {
     Box(modifier) {
         val board = game.board
@@ -66,11 +67,12 @@ fun GameView(
                 PieceColor.Black,
             ).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
 
-        BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap)
+        BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap, orientation)
         // Markers sit under the pieces so a capture ring never draws over the piece being captured
-        MovesView(board, moves)
+        MovesView(board, moves, orientation)
         BoardLayout(
             pieces = board.allPieces,
+            orientation = orientation,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             modifier =
@@ -85,12 +87,13 @@ fun GameView(
 private fun MovesView(
     board: Board,
     moves: List<Position>,
+    orientation: PieceColor,
 ) {
     Column {
-        for (y in 0 until 8) {
+        for (row in 0 until 8) {
             Row {
-                for (x in 0 until 8) {
-                    val position = Position(x, y)
+                for (column in 0 until 8) {
+                    val position = positionForCell(column, row, orientation)
                     Box(
                         modifier =
                             Modifier
@@ -150,13 +153,14 @@ fun BoardBackground(
     selection: Position?,
     dangerPositions: List<Position>,
     didTap: (Position) -> Unit,
+    orientation: PieceColor = PieceColor.White,
 ) {
     Column {
-        for (y in 0 until 8) {
+        for (row in 0 until 8) {
             Row {
-                for (x in 0 until 8) {
-                    val position = Position(x, y)
-                    val white = y % 2 == x % 2
+                for (column in 0 until 8) {
+                    val position = positionForCell(column, row, orientation)
+                    val white = position.y % 2 == position.x % 2
                     val color =
                         if (lastMove?.contains(position) == true || position == selection) {
                             BoardColors.lastMoveColor
@@ -175,17 +179,18 @@ fun BoardBackground(
                                     onClick = { didTap(position) },
                                 ),
                     ) {
-                        if (y == 7) {
+                        // Files label the bottom row and ranks the left column, whichever side is at the bottom
+                        if (row == 7) {
                             Text(
-                                text = "${'a' + x}",
+                                text = "${'a' + position.x}",
                                 modifier = Modifier.align(Alignment.BottomEnd),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.Black.copy(0.5f),
                             )
                         }
-                        if (x == 0) {
+                        if (column == 0) {
                             Text(
-                                text = "${8 - y}",
+                                text = "${8 - position.y}",
                                 modifier = Modifier.align(Alignment.TopStart),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.Black.copy(0.5f),
@@ -218,6 +223,7 @@ val boundsTransform = { _: Rect, _: Rect ->
 @Composable
 private fun BoardLayout(
     pieces: List<Pair<Position, Piece>>,
+    orientation: PieceColor,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     modifier: Modifier = Modifier,
@@ -254,9 +260,10 @@ private fun BoardLayout(
             layout(constraints.maxWidth, constraints.maxWidth) {
                 placeables.forEachIndexed { index, placeable ->
                     val (position, _) = pieces[index]
+                    val (column, row) = cellForPosition(position, orientation)
                     placeable.placeRelative(
-                        x = position.x * squareSize,
-                        y = position.y * squareSize,
+                        x = column * squareSize,
+                        y = row * squareSize,
                     )
                 }
             }
@@ -289,4 +296,32 @@ private fun MoveMarkersPreview() {
 @Composable
 private fun MoveMarkersDarkPreview() {
     MoveMarkersPreviewContent(darkTheme = true)
+}
+
+/** The same 1. e4 d5 position as [MoveMarkersPreviewContent], drawn from Black's side. */
+@Composable
+private fun BlackOrientationPreviewContent(darkTheme: Boolean) {
+    val game = Game.fromPgn("1. e4 d5")
+    val selection = Position(4, 4)
+    ChessTheme(darkTheme = darkTheme) {
+        GameView(
+            game = game,
+            selection = selection,
+            moves = game.movesForPieceAt(selection),
+            didTap = {},
+            orientation = PieceColor.Black,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BlackOrientationPreview() {
+    BlackOrientationPreviewContent(darkTheme = false)
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun BlackOrientationDarkPreview() {
+    BlackOrientationPreviewContent(darkTheme = true)
 }
