@@ -1,0 +1,1 @@
+01-app-launches.png: the debug build with the updated vienna-gambit.pgn installs and launches. There's no opening-trainer UI yet, so the PGN can't be shown in the app. `unzip -l app-debug.apk` confirms that assets/openings/vienna-gambit.pgn (2166 bytes) and french.pgn are packaged.
