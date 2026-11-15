@@ -56,6 +56,7 @@ fun GameView(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     orientation: PieceColor = PieceColor.White,
+    hintSquares: List<Position> = emptyList(),
 ) {
     Box(modifier) {
         val board = game.board
@@ -67,7 +68,7 @@ fun GameView(
                 PieceColor.Black,
             ).mapNotNull { if (game.kingIsInCheck(it)) game.kingPosition(it) else null }
 
-        BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap, orientation)
+        BoardBackground(game.history.lastOrNull(), selection, dangerPositions, didTap, orientation, hintSquares)
         // Markers sit under the pieces so a capture ring never draws over the piece being captured
         MovesView(board, moves, orientation)
         BoardLayout(
@@ -154,6 +155,7 @@ fun BoardBackground(
     dangerPositions: List<Position>,
     didTap: (Position) -> Unit,
     orientation: PieceColor = PieceColor.White,
+    hintSquares: List<Position> = emptyList(),
 ) {
     Column {
         for (row in 0 until 8) {
@@ -162,7 +164,9 @@ fun BoardBackground(
                     val position = positionForCell(column, row, orientation)
                     val white = position.y % 2 == position.x % 2
                     val color =
-                        if (lastMove?.contains(position) == true || position == selection) {
+                        if (position in hintSquares) {
+                            BoardColors.hintColor
+                        } else if (lastMove?.contains(position) == true || position == selection) {
                             BoardColors.lastMoveColor
                         } else if (dangerPositions.contains(position)) {
                             BoardColors.checkColor
@@ -324,4 +328,32 @@ private fun BlackOrientationPreview() {
 @Composable
 private fun BlackOrientationDarkPreview() {
     BlackOrientationPreviewContent(darkTheme = true)
+}
+
+/** After 1. e4, the e7-e6 reply highlighted as a hint, as the opening trainer shows it. */
+@Composable
+private fun HintSquaresPreviewContent(darkTheme: Boolean) {
+    val game = Game.fromPgn("1. e4")
+    ChessTheme(darkTheme = darkTheme) {
+        GameView(
+            game = game,
+            selection = null,
+            moves = emptyList(),
+            didTap = {},
+            orientation = PieceColor.Black,
+            hintSquares = listOf(Position(4, 1), Position(4, 2)),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HintSquaresPreview() {
+    HintSquaresPreviewContent(darkTheme = false)
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun HintSquaresDarkPreview() {
+    HintSquaresPreviewContent(darkTheme = true)
 }

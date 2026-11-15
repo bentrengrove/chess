@@ -84,10 +84,16 @@ data class OpeningTrainer(
         get() = line.getOrNull(ply)?.san?.let { game.applySanMove(it) }
 
     /**
-     * The comment for the move just played, or the opening's introduction before the first move.
+     * The comments to show for the current position: those on the learner's latest move and the
+     * opponent's reply. Before the learner has moved, the opening's introduction comes first, so
+     * playing Black still sees it.
      */
-    val currentComment: String?
-        get() = if (ply == 0) opening.root.comment else line[ply - 1].comment
+    val currentComments: List<String>
+        get() {
+            val lastLearnerPly = (ply - 1 downTo 0).firstOrNull { isLearnerPly(it) }
+            val moveComments = line.subList(lastLearnerPly ?: 0, ply.coerceAtMost(line.size)).mapNotNull { it.comment }
+            return if (lastLearnerPly == null) listOfNotNull(opening.root.comment) + moveComments else moveComments
+        }
 
     /**
      * The square of the piece to highlight for the learner: in Learn mode the piece to move,

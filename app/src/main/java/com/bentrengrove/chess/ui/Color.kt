@@ -19,4 +19,5 @@ object BoardColors {
     val checkColor = Color.Red.copy(alpha = 0.5f)
     val attackColor = Color.Red.copy(alpha = 0.5f)
     val moveColor = lastMoveColor
+    val hintColor = Color(0xFF43A047).copy(alpha = 0.6f)
 }

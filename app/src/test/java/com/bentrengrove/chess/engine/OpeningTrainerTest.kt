@@ -365,11 +365,33 @@ class OpeningTrainerTest {
     }
 
     @Test
-    fun theCommentIsTheIntroThenTheMoveJustPlayed() {
+    fun theCommentsAreTheIntroThenTheLearnersMoveAndTheReply() {
         val start = OpeningTrainer.start(white)
-        assertEquals("Intro.", start.currentComment)
+        assertEquals(listOf("Intro."), start.currentComments)
 
-        assertEquals("King's pawn.", start.playExpected().currentComment)
-        assertNull(start.playExpected().playExpected().currentComment)
+        val afterE4 = start.playExpected()
+        assertEquals(listOf("King's pawn."), afterE4.currentComments)
+        // The reply has no comment, so the learner's move's comment stays.
+        assertEquals(listOf("King's pawn."), afterE4.playOpponentMove().currentComments)
+
+        val afterNf3 = afterE4.playExpected().playExpected()
+        assertEquals(emptyList<String>(), afterNf3.currentComments)
+    }
+
+    @Test
+    fun playingBlackTheIntroStaysUntilTheLearnerMoves() {
+        val opening =
+            Opening.fromPgn(
+                "{Intro.} 1. e4 e6 {Prepares d5.} 2. d4 {Centre.} d5 3. Nc3",
+                name = "B",
+                side = PieceColor.Black,
+            )
+        val afterE4 = OpeningTrainer.start(opening).playExpected()
+        assertEquals(listOf("Intro."), afterE4.currentComments)
+
+        val afterD4 = afterE4.playExpected().playExpected()
+        assertEquals(listOf("Prepares d5.", "Centre."), afterD4.currentComments)
+
+        assertEquals(emptyList<String>(), afterD4.playExpected().playExpected().currentComments)
     }
 }

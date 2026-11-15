@@ -74,6 +74,11 @@ fun TitleView(
                 onClick = { showLoadDialog = true },
                 text = "Load Game",
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            GameButton(
+                onClick = { backStack.add(Screen.OpeningList) },
+                text = "Openings",
+            )
         }
     }
 
