@@ -3,6 +3,7 @@ package com.bentrengrove.chess.openingscreen
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,14 +20,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -44,7 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -213,27 +219,78 @@ private fun LinePicker(
     trainer: OpeningTrainer,
     onSelectLine: (Int) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { expanded = true }) {
-            Text(
-                text = "Line ${trainer.lineIndex + 1}/${trainer.lines.size}: ${lineLabel(trainer.lines, trainer.lineIndex)}",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose line")
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            trainer.lines.indices.forEach { index ->
-                DropdownMenuItem(
-                    text = { Text("${index + 1}. ${lineLabel(trainer.lines, index)}") },
-                    onClick = {
-                        expanded = false
-                        onSelectLine(index)
+    var showSheet by remember { mutableStateOf(false) }
+    TextButton(onClick = { showSheet = true }) {
+        Text("Line ${trainer.lineIndex + 1}/${trainer.lines.size}: ${lineName(trainer.lines, trainer.lineIndex)}")
+        Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose line")
+    }
+    if (showSheet) {
+        LineSheet(
+            lines = trainer.lines,
+            selectedIndex = trainer.lineIndex,
+            onSelectLine = {
+                showSheet = false
+                onSelectLine(it)
+            },
+            onDismiss = { showSheet = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LineSheet(
+    lines: List<List<OpeningNode>>,
+    selectedIndex: Int,
+    onSelectLine: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        LineList(lines = lines, selectedIndex = selectedIndex, onSelectLine = onSelectLine)
+    }
+}
+
+/**
+ * Every line, named by the move where it branches off, with its full moves underneath: the
+ * moves it shares with other lines dimmed and its own moves in full contrast.
+ */
+@Composable
+internal fun LineList(
+    lines: List<List<OpeningNode>>,
+    selectedIndex: Int,
+    onSelectLine: (Int) -> Unit,
+) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+        Text(
+            text = "Choose a line",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        lines.indices.forEach { index ->
+            val branch = branchPly(lines, index)
+            val shared = formatMoves(lines[index].take(branch), startPly = 0)
+            val own = formatMoves(lines[index].drop(branch), startPly = branch)
+            val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            ListItem(
+                headlineContent = { Text("Line ${index + 1}: ${lineName(lines, index)}") },
+                supportingContent = {
+                    Text(
+                        buildAnnotatedString {
+                            withStyle(SpanStyle(color = dim)) { append(shared) }
+                            if (shared.isNotEmpty()) append(" ")
+                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append(own) }
+                        },
+                    )
+                },
+                trailingContent =
+                    if (index == selectedIndex) {
+                        { Icon(Icons.Filled.Check, contentDescription = "Current line") }
+                    } else {
+                        null
                     },
-                )
-            }
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable { onSelectLine(index) },
+            )
         }
     }
 }
@@ -366,34 +423,51 @@ private fun statusText(trainer: OpeningTrainer): String {
     }
 }
 
+/** How many moves line [index] shares with the line it has most in common with. */
+internal fun branchPly(
+    lines: List<List<OpeningNode>>,
+    index: Int,
+): Int {
+    val line = lines[index]
+    return lines.indices.filter { it != index }.maxOfOrNull { other ->
+        line.zip(lines[other]).takeWhile { (a, b) -> a.san == b.san }.size
+    } ?: 0
+}
+
 /**
- * A short label for line [index]: its moves from where it branches off the other lines, e.g.
- * "3. Nd2 c5 4. exd5…".
+ * A short name for line [index]: the move where it branches off the other lines, e.g. "3. Nd2"
+ * or "3... exf4", or "Main line" when it is the only line. Since the learner never branches,
+ * this is always an opponent move.
  */
-internal fun lineLabel(
+internal fun lineName(
     lines: List<List<OpeningNode>>,
     index: Int,
 ): String {
-    val line = lines[index]
-    val branchPly =
-        lines.indices.filter { it != index }.maxOfOrNull { other ->
-            line.zip(lines[other]).takeWhile { (a, b) -> a.san == b.san }.size
-        } ?: 0
-    val shown = line.drop(branchPly).take(LABEL_PLIES)
-    val text =
-        shown
-            .mapIndexed { offset, node ->
-                val ply = branchPly + offset
-                when {
-                    ply % 2 == 0 -> "${ply / 2 + 1}. ${node.san}"
-                    offset == 0 -> "${ply / 2 + 1}... ${node.san}"
-                    else -> node.san
-                }
-            }.joinToString(" ")
-    return if (branchPly + shown.size < line.size) "$text…" else text
+    if (lines.size == 1) return "Main line"
+    val branch = branchPly(lines, index)
+    return formatMoves(lines[index].drop(branch).take(1), startPly = branch)
 }
 
-private const val LABEL_PLIES = 4
+/**
+ * Formats [nodes], the first of which is ply [startPly] from the start, as "3. e5 c5 4. c3", with
+ * a no-break space after each move number.
+ */
+internal fun formatMoves(
+    nodes: List<OpeningNode>,
+    startPly: Int,
+): String =
+    nodes
+        .mapIndexed { offset, node ->
+            val ply = startPly + offset
+            when {
+                // A no-break space keeps a move number on the same row as its move when text wraps.
+                ply % 2 == 0 -> "${ply / 2 + 1}.\u00A0${node.san}"
+
+                offset == 0 -> "${ply / 2 + 1}...\u00A0${node.san}"
+
+                else -> node.san
+            }
+        }.joinToString(" ")
 
 /** French sample, Learn mode, after 1. e4 e6 2. d4 so the comments on e6 and d4 show. */
 internal fun sampleLearnTrainer(): OpeningTrainer {
@@ -482,4 +556,25 @@ private fun DrillResultPreview() {
 @Composable
 private fun DrillResultDarkPreview() {
     PracticePreviewContent(sampleDrillResultTrainer(), darkTheme = true)
+}
+
+@Composable
+private fun LineListPreviewContent(darkTheme: Boolean) {
+    ChessTheme(darkTheme = darkTheme) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+            LineList(lines = sampleLearnTrainer().lines, selectedIndex = 0, onSelectLine = {})
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LineListPreview() {
+    LineListPreviewContent(darkTheme = false)
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun LineListDarkPreview() {
+    LineListPreviewContent(darkTheme = true)
 }
