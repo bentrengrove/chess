@@ -1,20 +1,18 @@
 package com.bentrengrove.chess.titlescreen
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -86,17 +84,25 @@ fun FallingPiecesBackground(
     val pieces = remember { Board().allPieces.map { it.second } }
     var containerSizePx by remember { mutableStateOf(IntOffset.Zero) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "falling-pieces")
-    val globalT by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(durationMillis = 9000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-        label = "fall-progress",
-    )
+    // Fall progress in "cycles" (one cycle = FALL_CYCLE_MILLIS). Driven by our own frame loop
+    // rather than an infinite transition so the fall can pause while this screen is entering:
+    // the pieces are then the *target* of the shared element flight back from the board, and a
+    // target that keeps moving never lets the bounds spring settle. The enter transition would
+    // never finish and the pieces would stay drawn in the overlay, above the buttons.
+    var globalT by remember { mutableFloatStateOf(0f) }
+    val transition = animatedVisibilityScope.transition
+    val isEntering = transition.targetState == EnterExitState.Visible && transition.currentState != EnterExitState.Visible
+
+    LaunchedEffect(isEntering) {
+        if (isEntering) return@LaunchedEffect
+        var lastFrameNanos = withInfiniteAnimationFrameNanos { it }
+        while (true) {
+            withInfiniteAnimationFrameNanos { frameNanos ->
+                globalT += (frameNanos - lastFrameNanos) / 1_000_000f / FALL_CYCLE_MILLIS
+                lastFrameNanos = frameNanos
+            }
+        }
+    }
 
     val density = LocalDensity.current
 
@@ -133,3 +139,5 @@ fun FallingPiecesBackground(
         }
     }
 }
+
+private const val FALL_CYCLE_MILLIS = 9000f
