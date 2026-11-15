@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -79,7 +81,9 @@ fun Content() {
                     ),
                 actions = actions,
             )
-            SharedTransitionLayout {
+            // Clip so pieces falling in from above the title screen (and shared elements
+            // drawn in the transition overlay) never paint over the top app bar.
+            SharedTransitionLayout(modifier = Modifier.clipToBounds()) {
                 NavDisplay(
                     backStack = backStack,
                     onBack = { backStack.removeLastOrNull() },
