@@ -211,6 +211,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
+          # Agent PRs are authored by the builder app, which the action can't confirm has write
+          # access, so by default it denies ./gradlew (and other build tools) on every PR-triggered
+          # run. gate.sh already restricts runs to owner/reviewer-bot triggers on non-fork agent/*
+          # branches, and only the owner and this app can push to them.
+          restrict_untrusted_prs: "false"
           bot_name: ${{ steps.app.outputs.app-slug }}[bot]
           bot_id: "334797901"
           allowed_bots: bentrengrove-builder,bentrengrove-reviewer
