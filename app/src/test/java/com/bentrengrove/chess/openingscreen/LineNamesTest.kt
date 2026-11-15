@@ -18,8 +18,17 @@ class LineNamesTest {
         val french = bundled("french.pgn")
         assertEquals(listOf("3. e5", "3. exd5", "3. Nd2", "3. Nc3").map { it.nbsp() }, french.indices.map { lineName(french, it) })
 
+        // Nested variations are named by their deepest branch: 3...exf4 4.e5 Nh5 is "4... Nh5".
         val vienna = bundled("vienna-gambit.pgn")
-        assertEquals("3... exf4".nbsp(), lineName(vienna, 2))
+        val nh5 = vienna.indexOfFirst { line -> line.any { it.san == "Nh5" } }
+        assertEquals("4... Nh5".nbsp(), lineName(vienna, nh5))
+        assertEquals(
+            vienna.size,
+            vienna.indices
+                .map { lineName(vienna, it) }
+                .toSet()
+                .size,
+        )
     }
 
     @Test
