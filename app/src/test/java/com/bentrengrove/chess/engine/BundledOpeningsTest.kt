@@ -28,6 +28,15 @@ class BundledOpeningsTest {
         }
     }
 
+    /** Asserts there is one line per expected prefix, in PGN order, and each line starts with its prefix. */
+    private fun assertLinesStartWith(
+        lines: List<List<String>>,
+        prefixes: List<List<String>>,
+    ) {
+        assertEquals("Number of lines in $lines", prefixes.size, lines.size)
+        lines.zip(prefixes).forEach { (line, prefix) -> assertEquals(prefix, line.take(prefix.size)) }
+    }
+
     /** Every line should end on the learner's move, so a drill finishes with the learner playing. */
     private fun assertLinesEndOnLearnersMove(opening: Opening) {
         val learnerParity = if (opening.side == PieceColor.White) 1 else 0
@@ -45,15 +54,17 @@ class BundledOpeningsTest {
         assertFalse(opening.root.comment.isNullOrBlank())
 
         val lines = opening.lineSans()
-        assertEquals(4, lines.size)
-        assertEquals(
+        assertLinesStartWith(
+            lines,
             listOf(
                 listOf("e4", "e5", "Nc3", "Nf6", "f4", "d5", "fxe5", "Nxe4", "Nf3", "Be7"),
                 listOf("e4", "e5", "Nc3", "Nf6", "f4", "d5", "fxe5", "Nxe4", "Nf3", "Bg4"),
-                listOf("e4", "e5", "Nc3", "Nf6", "f4", "exf4", "e5", "Ng8"),
+                listOf("e4", "e5", "Nc3", "Nf6", "f4", "exf4", "e5", "Ng8", "Nf3", "d6"),
+                listOf("e4", "e5", "Nc3", "Nf6", "f4", "exf4", "e5", "Ng8", "Nf3", "Nc6"),
+                listOf("e4", "e5", "Nc3", "Nf6", "f4", "exf4", "e5", "Nh5"),
+                listOf("e4", "e5", "Nc3", "Nf6", "f4", "exf4", "e5", "Qe7"),
                 listOf("e4", "e5", "Nc3", "Nf6", "f4", "d6", "Nf3", "Nc6"),
             ),
-            lines.map { it.take(it.indexOfMainBranchEnd()) },
         )
         lines.forEach { assertTrue("Line $it is too short", it.size >= 16) }
 
@@ -70,15 +81,14 @@ class BundledOpeningsTest {
         assertFalse(opening.root.comment.isNullOrBlank())
 
         val lines = opening.lineSans()
-        assertEquals(4, lines.size)
-        assertEquals(
+        assertLinesStartWith(
+            lines,
             listOf(
                 listOf("e4", "e6", "d4", "d5", "e5", "c5"),
                 listOf("e4", "e6", "d4", "d5", "exd5", "exd5"),
                 listOf("e4", "e6", "d4", "d5", "Nd2", "c5"),
                 listOf("e4", "e6", "d4", "d5", "Nc3", "Bb4"),
             ),
-            lines.map { it.take(6) },
         )
         lines.forEach { assertTrue("Line $it is too short", it.size >= 16) }
 
@@ -99,8 +109,4 @@ class BundledOpeningsTest {
             assertTrue("$fileName should comment its key moves, found $commented", commented >= 10)
         }
     }
-
-    // The Vienna branches at Black's 3rd move and again at Black's 5th in the 3...d5 line, so
-    // the 3...d5 lines are identified by 10 plies and the others by 8.
-    private fun List<String>.indexOfMainBranchEnd(): Int = if (this[5] == "d5") 10 else 8
 }
