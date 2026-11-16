@@ -8,7 +8,7 @@ A chess game for Android written in Jetpack Compose. It is a personal experiment
 
 - Single module: `:app`, package `com.bentrengrove.chess`.
 - `engine/`: pure Kotlin game logic (`Board`, `Game`, `AI`). **No Compose or Android UI imports**, apart from the existing `@DrawableRes` piece artwork mapping. Everything here must be unit-testable on the JVM.
-- `gamescreen/`: the game UI (`GameView`, `BoardView`, `GameStatusView`, `CapturedView`) and `GameViewModel`, which owns the `Game` state and undo/redo history.
+- `gamescreen/`: the game UI (`GameView`, `BoardView`, `GameStatusView`, `CapturedView`) and `GameViewModel`, which owns the `Game` state and undo/redo history. Naming quirk: `BoardView.kt` contains the board composable, which is named `GameView`, and a different `GameView` (the whole screen) lives in `GameView.kt`. Issues that say "BoardView" mean the board one.
 - `titlescreen/`: the title screen and falling-pieces background.
 - `ui/`: theme, colours, shapes, typography.
 - `MainActivity.kt`: Navigation 3 back stack (`Screen` keys) and shared element transitions.
